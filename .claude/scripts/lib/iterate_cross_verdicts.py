@@ -1,0 +1,817 @@
+#!/usr/bin/env python3
+"""iterate_cross_verdicts.py — Pure-Python verdict computation for /iterate --cross.
+
+PostHog-only. Reads:
+  - .runs/iterate-cross-data.json     (gathered by state-x1, signups added in x2)
+  - .runs/iterate-cross-data-issues.json (computed by state-x1a)
+  - experiment/iterate-cross-config.yaml  (operator config; falls back to defaults)
+
+Writes:
+  - .runs/iterate-cross-scores.json   (consumed by state-x4)
+  - .runs/iterate-cross-telegram.txt  (optional; --emit-telegram)
+
+Verdict precedence (first match wins):
+  0. MISSING_PROJECT_NAME    (issues.missing_project_name — orphan event stream)
+  1. GA_NO_PH_TRACKING       (issues.ga_clicks_without_ph_traffic — GA has spend, PostHog blind)
+  2. NO_DATA                 (issues.no_event_data)
+  3. INSUFFICIENT_DATA       (visitors < visitors_floor — not enough sample)
+  4. GO                      (visitors >= visitors_floor AND conv_rate >= conv_rate_go)
+  5. NO_GO                   (visitors >= visitors_floor AND conv_rate < conv_rate_go)
+
+Denominator rule: when mvp.ga_clicks > 0 (state-x0a merged Google Ads clicks),
+`visitors = ga_clicks` (the more reliable signal — clicks are GA-counted directly,
+not subject to PostHog SDK lazy-load failures). Otherwise fall back to PostHog
+`gclid_visitors`. The score record exposes both numbers + `denominator_source`
+so x4 can flag PH-overcount discrepancies (ph > ga * 1.10).
+
+Signups numerator: prefer trusted DB ground truth (Supabase or Railway) whenever
+available; fall back to PostHog `ph_signups` only when DB has no mapping. DB rows
+are the actual completed signups — PH events may over- or under-count due to
+late instrumentation, ad-blocker drops, or wrong signup_events config.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+
+
+DEFAULT_CONFIG = {
+    "signup_whitelist": [
+        "signup_complete",
+        "waitlist_signup",
+        "waitlist_submit",
+        "early_access_signup",
+        "activate",
+        "form_submitted",
+    ],
+    "mvp_mappings": {},
+    "thresholds": {
+        "signups_go": 6,            # derived: visitors_floor * conv_rate_go
+        "visitors_floor": 100,      # min paid visitors to commit either way
+        "conv_rate_go": 0.06,       # min conversion rate to call GO
+        "pay_intent_rate_go": 0.02, # min Phase 2 pay-intent rate to call GO
+    },
+    "window_days": 90,
+}
+
+VERDICT_GO = "GO"
+VERDICT_WEAK = "WEAK"
+VERDICT_NO_GO = "NO_GO"
+VERDICT_INSUFFICIENT = "INSUFFICIENT_DATA"
+VERDICT_NO_DATA = "NO_DATA"
+VERDICT_MISSING_PROJECT_NAME = "MISSING_PROJECT_NAME"
+# GA campaign has paid clicks but PostHog has zero presence for this MVP (neither
+# canonical events nor orphan rows). Strictly stricter than MISSING_PROJECT_NAME
+# (which fires when PH SEES the traffic but project_name is NULL). This verdict
+# surfaces deploys that the operator is paying for but cannot measure at all.
+VERDICT_GA_NO_PH_TRACKING = "GA_NO_PH_TRACKING"
+
+VERDICT_ENUM = {
+    VERDICT_GO,
+    VERDICT_WEAK,
+    VERDICT_NO_GO,
+    VERDICT_INSUFFICIENT,
+    VERDICT_NO_DATA,
+    VERDICT_MISSING_PROJECT_NAME,
+    VERDICT_GA_NO_PH_TRACKING,
+}
+
+VERDICT_SORT_ORDER = {
+    VERDICT_MISSING_PROJECT_NAME: 0,
+    VERDICT_GA_NO_PH_TRACKING: 1,
+    VERDICT_GO: 2,
+    VERDICT_WEAK: 3,
+    VERDICT_INSUFFICIENT: 4,
+    VERDICT_NO_GO: 5,
+    VERDICT_NO_DATA: 6,
+}
+
+PAY_INTENT_VERDICT_SORT_ORDER = {
+    VERDICT_MISSING_PROJECT_NAME: 0,
+    VERDICT_GA_NO_PH_TRACKING: 1,
+    VERDICT_GO: 2,
+    VERDICT_INSUFFICIENT: 3,
+    VERDICT_NO_GO: 4,
+    VERDICT_NO_DATA: 5,
+}
+
+
+def is_trusted_db_real(mvp: dict) -> bool:
+    return (
+        mvp.get("db_signups_real") is not None
+        and mvp.get("db_unmapped_reason") is None
+        and mvp.get("db_signups_real_windowed") is True
+        and mvp.get("db_source") in {"supabase", "railway"}
+    )
+
+
+def resolve_effective_signups(mvp: dict) -> tuple[int | None, str | None, list[dict]]:
+    """Pick the signup count and source for the verdict.
+
+    DB-first policy: when the MVP has a trusted DB ground-truth count
+    (Supabase or Railway, mapped + windowed), use it regardless of what
+    PostHog reports. PostHog is a fallback only when no DB is available.
+
+    Rationale: DB rows are actual completed signups. PostHog events can be
+    over-counted (wrong signup_events config), under-counted (late
+    instrumentation, ad-blocker drops, OAuth callbacks fired server-side),
+    or attribution-broken (gclid lost between landing and signup page).
+
+    Returns (effective_signups, source, sanity_flags).
+    Sources:
+      - "db_real":      trusted DB count used (preferred)
+      - "db_real_zero": trusted DB == 0 while PostHog has paid signups
+                        (flagged for operator review; treat as 0)
+      - "ph":           PostHog count used (no trusted DB available)
+      - None:           neither source has signal
+    """
+    ph_signups_available = mvp.get("ph_signups_available")
+    if ph_signups_available is None:
+        ph_signups_available = bool(mvp.get("signup_events"))
+    ph_signups = mvp.get("ph_signups", mvp.get("signups"))
+    if ph_signups is None and ph_signups_available:
+        ph_signups = 0
+    db_real = mvp.get("db_signups_real")
+    flags: list[dict] = []
+
+    if is_trusted_db_real(mvp):
+        # DB has the truth. Emit a high-severity flag only when DB=0 contradicts
+        # positive PH paid signups — that's a signal the PH config is wrong, not
+        # that the verdict should change.
+        if (
+            db_real == 0
+            and ph_signups_available is True
+            and (ph_signups or 0) > 0
+        ):
+            flags.append({
+                "flag": "db_zero_with_ph_signups",
+                "severity": "high",
+                "message": "Trusted DB has zero real signups while PostHog has paid signup events.",
+            })
+            return 0, "db_real_zero", flags
+        return int(db_real or 0), "db_real", flags
+
+    # No trusted DB → fall back to PostHog when available.
+    if ph_signups_available is True:
+        return int(ph_signups or 0), "ph", flags
+    return None, None, flags
+
+
+def _traffic_for_sort(score: dict) -> int:
+    metrics = score.get("metrics", {})
+    return metrics.get("ga_clicks") or metrics.get("gclid_visitors") or 0
+
+
+def _global_score_key(score: dict) -> tuple:
+    return (
+        VERDICT_SORT_ORDER.get(score.get("headline_verdict"), 99),
+        -_traffic_for_sort(score),
+        score.get("name") or "",
+    )
+
+
+def sort_scores_global(scores: list[dict]) -> list[dict]:
+    """Rank-table ordering: verdict first, traffic second, name third."""
+    return sorted(scores, key=_global_score_key)
+
+
+def sort_scores_by_owner(scores: list[dict]) -> list[dict]:
+    """Telegram ordering: owner first, then global ordering within each owner."""
+    return sorted(
+        scores,
+        key=lambda s: (
+            s.get("owner") or "unassigned",
+            *_global_score_key(s),
+        ),
+    )
+
+
+def load_config(path: str | None) -> dict:
+    """Load YAML config; deep-merge with defaults so partial configs work."""
+    config = {
+        k: (dict(v) if isinstance(v, dict) else list(v) if isinstance(v, list) else v)
+        for k, v in DEFAULT_CONFIG.items()
+    }
+    if path and os.path.exists(path):
+        try:
+            import yaml
+        except ImportError:
+            print("WARN: PyYAML not installed; using defaults.", file=sys.stderr)
+            return config
+        user_config = yaml.safe_load(open(path)) or {}
+        for key, default_value in DEFAULT_CONFIG.items():
+            if key in user_config and user_config[key] is not None:
+                if isinstance(default_value, dict) and isinstance(user_config[key], dict):
+                    merged = dict(default_value)
+                    merged.update(user_config[key])
+                    config[key] = merged
+                else:
+                    config[key] = user_config[key]
+        # Preserve user-supplied mvp_mappings (deep merge isn't appropriate; user controls)
+        if "mvp_mappings" in user_config:
+            config["mvp_mappings"] = user_config["mvp_mappings"] or {}
+    return config
+
+
+def compute_headline_verdict(mvp: dict, issues: dict, thresholds: dict) -> dict:
+    """Apply precedence rules and return the score record for one MVP.
+
+    Precedence (first match wins):
+      0. missing_project_name → MISSING_PROJECT_NAME (orphan event stream — fix tracking)
+      1. ga_clicks_without_ph_traffic → GA_NO_PH_TRACKING (paying for blind deploy)
+      2. no_event_data → NO_DATA
+      3. visitors < visitors_floor → INSUFFICIENT_DATA (not enough sample)
+      4. conv_rate >= conv_rate_go → GO
+      5. (default; visitors >= floor, conv below threshold) → NO_GO
+
+    Conversion rate is signups / visitors where signups uses DB-first priority
+    (see resolve_effective_signups) and visitors uses GA-clicks when available
+    (state-x0a merged Google Ads data), else PostHog gclid_visitors.
+    """
+    gclid_visitors = mvp.get("gclid_visitors", 0)
+    ga_clicks = mvp.get("ga_clicks", 0) or 0
+    ph_signups = mvp.get("ph_signups", mvp.get("signups", 0))
+    raw_ph_signups = int(ph_signups or 0)
+    effective_signups, signup_source, source_flags = resolve_effective_signups(mvp)
+    signups = effective_signups if effective_signups is not None else 0
+    signup_events = mvp.get("signup_events") or []
+
+    # Denominator selection: GA clicks override PH visitors when available.
+    if ga_clicks > 0:
+        visitors = ga_clicks
+        denominator_source = "ga"
+    else:
+        visitors = gclid_visitors
+        denominator_source = "ph"
+
+    visitors_floor = thresholds["visitors_floor"]
+    conv_rate_go = thresholds.get("conv_rate_go", 0.06)
+    # Effective conv rate uses the chosen denominator (GA when present).
+    conv_rate_for_verdict = (signups / visitors) if visitors > 0 else 0.0
+
+    if issues.get("missing_project_name"):
+        verdict = VERDICT_MISSING_PROJECT_NAME
+    elif issues.get("ga_clicks_without_ph_traffic"):
+        verdict = VERDICT_GA_NO_PH_TRACKING
+    elif issues.get("no_event_data"):
+        verdict = VERDICT_NO_DATA
+    elif visitors < visitors_floor:
+        verdict = VERDICT_INSUFFICIENT
+    elif conv_rate_for_verdict >= conv_rate_go:
+        verdict = VERDICT_GO
+    else:
+        verdict = VERDICT_NO_GO
+
+    visitors_needed = (
+        max(0, visitors_floor - visitors)
+        if verdict == VERDICT_INSUFFICIENT
+        else 0
+    )
+
+    # PH conv_rate retained for back-compat with existing telegram/x4 consumers.
+    conv_rate = (signups / gclid_visitors) if gclid_visitors > 0 else 0.0
+    # True conv rate uses GA clicks when present — the operator-facing number.
+    true_conv_rate = (signups / ga_clicks) if ga_clicks > 0 else conv_rate
+    # Capture rate = how much of the paid traffic PostHog actually sees.
+    # Null when no GA data available (we have no ground-truth denominator).
+    capture_rate = (gclid_visitors / ga_clicks) if ga_clicks > 0 else None
+
+    # DB ground-truth cross-check (state-x0b → x1 propagation). These flags
+    # compare raw PH paid signups against DB truth even when the verdict itself
+    # uses DB-first effective signups.
+    # db_signups is None when Supabase mapping is missing/unauthorized — treat
+    # as "no comparison available", do NOT collapse to zero.
+    db_signups = mvp.get("db_signups_real", mvp.get("db_signups"))
+    db_first_signup_at = mvp.get("db_first_signup_at")
+    sanity_flags = compute_db_sanity_flags(
+        paid_signups=raw_ph_signups,
+        db_signups=db_signups,
+        db_first_signup_at=db_first_signup_at,
+        first_seen=mvp.get("first_seen"),
+        ga_clicks=ga_clicks,
+    ) + source_flags
+
+    return {
+        "name": mvp.get("name"),
+        "owner": mvp.get("owner"),
+        "headline_verdict": verdict,
+        "visitors_needed": visitors_needed,
+        "metrics": {
+            "gclid_visitors": gclid_visitors,
+            "ga_clicks": ga_clicks,
+            "signups": signups,
+            "effective_signups": effective_signups,
+            "signup_source": signup_source,
+            "ph_signups": ph_signups,
+            "ph_signups_available": mvp.get("ph_signups_available"),
+            "db_signups": mvp.get("db_signups"),
+            "db_signups_real": mvp.get("db_signups_real"),
+            "db_signups_raw": mvp.get("db_signups_raw"),
+            "conv_rate": round(conv_rate, 4),
+            "true_conv_rate": round(true_conv_rate, 4),
+            "capture_rate": round(capture_rate, 4) if capture_rate is not None else None,
+            "denominator_source": denominator_source,
+        },
+        "signup_events": signup_events,
+        # When state-x0 merged an orphan into this canonical record (high gclid
+        # overlap = same deploy with partial page tracking), partial_tracking_pct
+        # is the fraction of orphan visitors NOT covered by canonical tracking.
+        # state-x4 renders a "⚠ partial tracking" marker on the row when set.
+        "partial_tracking_pct": mvp.get("partial_tracking_pct"),
+        "ga_only": bool(mvp.get("ga_only")),
+        "ga_campaigns": mvp.get("ga_campaigns") or [],
+        # DB cross-check artifacts (from state-x0b).
+        # db_source discriminates which backend supplied db_signups so x4 can
+        # render attribution ("supabase" | "railway" | None). db_signups_table
+        # is already source-prefixed for Railway (e.g. "railway:public.users"),
+        # but the explicit field is cleaner for downstream consumers than
+        # string-prefix parsing.
+        "db_signups_table": mvp.get("db_signups_table"),
+        "db_first_signup_at": db_first_signup_at,
+        "db_unmapped_reason": mvp.get("db_unmapped_reason"),
+        "db_source": mvp.get("db_source"),
+        "tracking_sanity_flags": sanity_flags,
+    }
+
+
+def compute_pay_intent_verdict(mvp: dict, issues: dict, thresholds: dict) -> dict:
+    """Apply Phase 2 pay-intent precedence rules for one MVP.
+
+    Precedence (first match wins):
+      0. missing_project_name -> MISSING_PROJECT_NAME
+      1. ga_clicks_without_ph_traffic -> GA_NO_PH_TRACKING
+      2. no_event_data -> NO_DATA
+      3. ga_clicks < visitors_floor -> INSUFFICIENT_DATA
+      4. pay_intent_rate >= pay_intent_rate_go -> GO
+      5. default -> NO_GO
+
+    Phase 2 uses Google Ads clicks as the sole verdict denominator. PostHog
+    phase-scoped gclid visitors are diagnostic only and are never a denominator
+    fallback in this function.
+    """
+    ga_clicks = int(mvp.get("ga_clicks", 0) or 0)
+    pay_intents = int(mvp.get("pay_intents", 0) or 0)
+    gclid_visitors_phase2 = int(
+        mvp.get("gclid_visitors_phase2", mvp.get("gclid_visitors", 0)) or 0
+    )
+    visitors_floor = thresholds["visitors_floor"]
+    pay_intent_rate_go = thresholds.get("pay_intent_rate_go", 0.02)
+    pay_intent_price_cents = float(mvp.get("pay_intent_price_cents", 0) or 0)
+    pay_intent_price_variants = int(mvp.get("pay_intent_price_variants", 0) or 0)
+    pay_intent_rate = (pay_intents / ga_clicks) if ga_clicks > 0 else 0.0
+    revenue_intent_per_click = (
+        pay_intents * pay_intent_price_cents / ga_clicks
+        if ga_clicks > 0
+        else 0.0
+    )
+    capture_rate = (gclid_visitors_phase2 / ga_clicks) if ga_clicks > 0 else None
+
+    if issues.get("missing_project_name"):
+        verdict = VERDICT_MISSING_PROJECT_NAME
+    elif issues.get("ga_clicks_without_ph_traffic"):
+        verdict = VERDICT_GA_NO_PH_TRACKING
+    elif issues.get("no_event_data"):
+        verdict = VERDICT_NO_DATA
+    elif ga_clicks < visitors_floor:
+        verdict = VERDICT_INSUFFICIENT
+    elif pay_intent_rate >= pay_intent_rate_go:
+        verdict = VERDICT_GO
+    else:
+        verdict = VERDICT_NO_GO
+
+    visitors_needed = (
+        max(0, visitors_floor - ga_clicks)
+        if verdict == VERDICT_INSUFFICIENT
+        else 0
+    )
+
+    return {
+        "name": mvp.get("name"),
+        "owner": mvp.get("owner"),
+        "headline_verdict": verdict,
+        "visitors_needed": visitors_needed,
+        "metrics": {
+            "gclid_visitors_phase2": gclid_visitors_phase2,
+            "gclid_visitors": mvp.get("gclid_visitors", gclid_visitors_phase2),
+            "ga_clicks": ga_clicks,
+            "pay_intents": pay_intents,
+            "pay_intent_rate": round(pay_intent_rate, 4),
+            "pay_intent_price_cents": pay_intent_price_cents,
+            "revenue_intent_per_click": round(revenue_intent_per_click, 2),
+            "pay_intent_price_variants": pay_intent_price_variants,
+            "pay_intent_rate_go": pay_intent_rate_go,
+            "capture_rate": round(capture_rate, 4) if capture_rate is not None else None,
+            "denominator_source": "ga",
+        },
+        "phase_match": mvp.get("phase_match"),
+        "orphan": bool(mvp.get("orphan")),
+        "ga_only": bool(mvp.get("ga_only")),
+        "ga_campaigns": mvp.get("ga_campaigns") or [],
+    }
+
+
+def pay_intent_go_rank_key(score: dict) -> tuple[float, float, int, str]:
+    metrics = score.get("metrics", {})
+    return (
+        -float(metrics.get("revenue_intent_per_click") or 0),
+        -float(metrics.get("pay_intent_rate") or 0),
+        -int(metrics.get("ga_clicks") or 0),
+        score.get("name") or "",
+    )
+
+
+def pay_intent_score_key(score: dict, order: dict | None = None) -> tuple:
+    verdict_order = order or PAY_INTENT_VERDICT_SORT_ORDER
+    return (
+        verdict_order.get(score.get("headline_verdict"), 99),
+        *pay_intent_go_rank_key(score),
+    )
+
+
+def pay_intent_revenue_cell(metrics: dict) -> str:
+    rev = float(metrics.get("revenue_intent_per_click") or 0)
+    cell = f"${rev / 100:.2f}"
+    if int(metrics.get("pay_intent_price_variants") or 0) > 1:
+        cell += " ⚠ mixed-price"
+    return cell
+
+
+def compute_db_sanity_flags(
+    paid_signups: int,
+    db_signups: int | None,
+    db_first_signup_at: str | None,
+    first_seen: str | None,
+    ga_clicks: int,
+) -> list[dict]:
+    """Emit human-readable sanity flags when PostHog and Supabase disagree.
+
+    Returns a list of {flag, severity, message} dicts. Empty list means
+    PH and DB agree (or DB has no signal to compare against).
+
+    Flag semantics:
+      - ph_attribution_broken: DB has signups but PH paid is zero. gclid
+        attribution likely lost between landing and signup page. (x-predict
+        is the canonical example: 18 DB users, 0 paid.)
+      - ph_undercount: DB has > 3x PH paid signups. Either organic-only
+        signups (fine) OR PostHog `signup_complete` track call instrumented
+        late / not on every signup path (stylica-ai pattern).
+      - ph_overcount: PH paid > DB total * 1.5. signup_events config likely
+        wrong (counting a non-signup event — stylica-ai's `activate` before
+        the operator-locked fix).
+      - late_instrumentation: PH's first signup event is > 7 days AFTER the
+        DB's first signup row. Operator likely added the track() call after
+        product launched. Early signups silently lost.
+
+    All flags are non-blocking — they surface in x4 output for operator review.
+    """
+    flags: list[dict] = []
+
+    if db_signups is None:
+        # No DB comparison available; nothing to flag.
+        return flags
+
+    # ph_attribution_broken: paying for ads, DB has rows, PH paid is zero.
+    if db_signups >= 3 and paid_signups == 0 and ga_clicks > 0:
+        flags.append({
+            "flag": "ph_attribution_broken",
+            "severity": "high",
+            "message": (
+                f"DB has {db_signups} signups but PostHog paid count is 0. "
+                "gclid attribution may be lost between landing and signup page — "
+                "check that PostHog SDK captures $session_entry_gclid before the URL is cleaned."
+            ),
+        })
+
+    # ph_overcount: PH > 1.5x DB total → likely wrong signup_events event name.
+    elif db_signups > 0 and paid_signups > db_signups * 1.5:
+        flags.append({
+            "flag": "ph_overcount",
+            "severity": "high",
+            "message": (
+                f"PostHog paid signups ({paid_signups}) > DB total ({db_signups}) * 1.5. "
+                "Likely classified a non-signup event (e.g. activate firing on feature-use). "
+                "Edit experiment/iterate-cross-config.yaml mvp_mappings.<name>.signup_events and lock with classified_by: operator."
+            ),
+        })
+
+    # ph_undercount: DB > 3x PH paid → late instrumentation, broken track path, or organic-only.
+    elif db_signups > paid_signups * 3 and db_signups >= 3:
+        flags.append({
+            "flag": "ph_undercount",
+            "severity": "medium",
+            "message": (
+                f"DB has {db_signups} signups, PostHog paid only {paid_signups}. "
+                "Could be organic-only traffic (no gclid) OR PostHog track('signup_complete') "
+                "not covering all signup paths (e.g. OAuth callback fires server-side)."
+            ),
+        })
+
+    # late_instrumentation: PH first event > 7d AFTER DB first row.
+    # `first_seen` on the MVP is the earliest PH event with gclid attribution,
+    # which is the right baseline for "when did paid tracking start working".
+    if db_first_signup_at and first_seen:
+        try:
+            from datetime import datetime, timezone
+
+            def parse_iso(s: str) -> datetime:
+                # Tolerate space-separated and various trailing fragments.
+                s = s.replace(" ", "T")
+                if "+" in s:
+                    s = s.split("+")[0] + "+00:00"
+                if s.endswith("Z"):
+                    s = s[:-1] + "+00:00"
+                if "." in s and len(s.split(".")[-1].split("+")[0]) > 6:
+                    # Trim sub-microsecond precision Postgres sometimes emits.
+                    head, _, tail = s.partition(".")
+                    frac, _, tz = tail.partition("+")
+                    s = f"{head}.{frac[:6]}+{tz}" if tz else f"{head}.{frac[:6]}"
+                if "+" not in s:
+                    s = s + "+00:00"
+                return datetime.fromisoformat(s)
+
+            db_first = parse_iso(db_first_signup_at)
+            ph_first = parse_iso(first_seen)
+            gap_days = (ph_first - db_first).days
+            if gap_days >= 7:
+                flags.append({
+                    "flag": "late_instrumentation",
+                    "severity": "high",
+                    "message": (
+                        f"PostHog first paid event ({ph_first.date()}) is {gap_days} days AFTER "
+                        f"first DB signup ({db_first.date()}). "
+                        "Tracking was added after product launch — signups before the PH instrument "
+                        "date are invisible to /iterate. Consider extending the analysis window or "
+                        "noting the gap when interpreting the conversion rate."
+                    ),
+                })
+        except (ValueError, TypeError):
+            # Date parsing failure is non-critical; skip the flag.
+            pass
+
+    return flags
+
+
+def parse_debug_prompts(content: str) -> dict:
+    """Parse iterate-cross-debug-prompts.md into {HEADING: body_text}."""
+    prompts: dict = {}
+    current_key = None
+    current_lines: list[str] = []
+    for line in content.splitlines():
+        if line.startswith("## "):
+            if current_key:
+                prompts[current_key] = "\n".join(current_lines).strip()
+            current_key = line[3:].strip()
+            current_lines = []
+        elif current_key:
+            current_lines.append(line)
+    if current_key:
+        prompts[current_key] = "\n".join(current_lines).strip()
+    return prompts
+
+
+ACTION_TEMPLATES = {
+    VERDICT_GO: "Promote {name} to Phase 2 manually: fake-door -> manual Phase 2 campaign -> /ads-ready phase-2 -> /iterate --cross --phase2. See Phase 2 Playbook.",
+    VERDICT_WEAK: "{name}: above visitors floor but only {signups} signups. Investigate landing-page friction or extend campaign window before deciding.",  # deprecated — current rule never emits WEAK
+    VERDICT_NO_GO: "Stop {name}; document hypothesis rejection in retro. (≥{visitors_floor} visitors with conv < {conv_rate_go_pct})",
+    VERDICT_INSUFFICIENT: "Keep {name} running until {visitors_needed} more visitors arrive (target: {visitors_floor}+).",
+    VERDICT_NO_DATA: "Debug PostHog tracking for {name}. Run Claude Code in the MVP repo with the NO_DATA prompt below.",
+    VERDICT_MISSING_PROJECT_NAME: "Fix {name} tracking: PostHog events arrived without `project_name`. Check `src/lib/analytics.ts` PROJECT_NAME constant — it must equal experiment.yaml.name (kebab-case). Re-run /verify in the MVP repo after fixing.",
+    VERDICT_GA_NO_PH_TRACKING: "Fix {name}: Google Ads is serving paid traffic but PostHog records ZERO events. Either the deploy is missing src/lib/analytics.ts entirely, the ad's Final URL points to a page that doesn't import analytics, or PROJECT_NAME doesn't match what /iterate --cross expects. Check Final URL in Google Ads, then verify analytics.ts is imported on that page.",
+}
+
+PAY_INTENT_ACTION_TEMPLATES = {
+    VERDICT_GO: "Promote {name} to Phase 3 eligibility; rank GO MVPs by revenue-intent per click (pay-intent rate × reference price) as slots open.",
+    VERDICT_NO_GO: "Stop {name}; free usage did not convert to pay intent at Phase 2 threshold.",
+    VERDICT_INSUFFICIENT: "Keep {name} running until {visitors_needed} more Phase 2 clicks arrive (target: {visitors_floor}+).",
+    VERDICT_NO_DATA: "Debug Phase 2 PostHog tracking for {name}; no phase-scoped event data was observed.",
+    VERDICT_MISSING_PROJECT_NAME: "Fix {name} tracking: Phase 2 paid events arrived without `project_name`.",
+    VERDICT_GA_NO_PH_TRACKING: "Fix {name}: Phase 2 Google Ads has clicks but PostHog records zero phase-scoped paid traffic.",
+}
+
+
+def _format_rate_pct(rate: float) -> str:
+    return f"{rate * 100:g}%"
+
+
+def action_line(
+    verdict: str,
+    name: str,
+    signups: int,
+    visitors_needed: int,
+    visitors_floor: int,
+    conv_rate_go: float = 0.06,
+) -> str:
+    template = ACTION_TEMPLATES.get(verdict, "Unknown verdict.")
+    return template.format(
+        name=name,
+        signups=signups,
+        visitors_needed=visitors_needed,
+        visitors_floor=visitors_floor,
+        conv_rate_go_pct=_format_rate_pct(conv_rate_go),
+    )
+
+
+def pay_intent_action_line(
+    verdict: str,
+    name: str,
+    pay_intents: int,
+    visitors_needed: int,
+    visitors_floor: int,
+    pay_intent_rate_go: float = 0.02,
+) -> str:
+    template = PAY_INTENT_ACTION_TEMPLATES.get(verdict, "Unknown verdict.")
+    return template.format(
+        name=name,
+        pay_intents=pay_intents,
+        visitors_needed=visitors_needed,
+        visitors_floor=visitors_floor,
+        pay_intent_rate_go_pct=_format_rate_pct(pay_intent_rate_go),
+    )
+
+
+def emit_telegram(
+    scores: list,
+    debug_prompts: dict,
+    visitors_floor: int,
+    conv_rate_go: float = 0.06,
+) -> str:
+    """Group by owner; one block per owner; each block ≤ 4000 chars.
+
+    If no MVP has owner set, all MVPs are grouped under 'unassigned'.
+    """
+    by_owner: dict = {}
+    for s in sort_scores_by_owner(scores):
+        owner = s.get("owner") or "unassigned"
+        by_owner.setdefault(owner, []).append(s)
+
+    blocks = []
+    for owner, owner_scores in by_owner.items():
+        lines = [f"*Phase 1 cross-MVP update — {owner}*", ""]
+        needed_prompts: set = set()
+        for s in owner_scores:
+            verdict = s["headline_verdict"]
+            name = s.get("name") or "(unknown)"
+            metrics = s["metrics"]
+            action = action_line(
+                verdict,
+                name,
+                metrics["signups"],
+                s["visitors_needed"],
+                visitors_floor,
+                conv_rate_go,
+            )
+            # Visitor display: prefer ga_clicks when GA was the denominator.
+            ga_clicks = metrics.get("ga_clicks", 0) or 0
+            gclid_visitors = metrics.get("gclid_visitors", 0)
+            if metrics.get("denominator_source") == "ga":
+                line_metrics = (
+                    f"({ga_clicks} GA-clicks / {gclid_visitors} PH-visit / "
+                    f"{metrics['signups']} signups)"
+                )
+            else:
+                line_metrics = f"({gclid_visitors} visitors / {metrics['signups']} signups)"
+            # Partial-tracking suffix when state-x0 merged an orphan into this canonical.
+            pt = s.get("partial_tracking_pct")
+            pt_suffix = ""
+            if isinstance(pt, (int, float)) and pt > 0:
+                pt_suffix = f" ⚠ {round(pt * 100)}% pages w/o project_name"
+            # Capture-rate warning: GA tracked many more clicks than PostHog visitors.
+            cap = metrics.get("capture_rate")
+            cap_suffix = ""
+            if isinstance(cap, (int, float)) and cap < 0.5 and ga_clicks > 0:
+                cap_suffix = f" ⚠ PH capturing only {round(cap * 100)}% of paid clicks"
+            # PH-overcount: gclid_visitors > 1.10 * ga_clicks (distinct_id churn / multi-device).
+            overcount_suffix = ""
+            if ga_clicks > 0 and gclid_visitors > ga_clicks * 1.10:
+                overcount_suffix = (
+                    f" ⚠ PH-overcount {round(gclid_visitors / ga_clicks * 100)}% "
+                    "(likely distinct_id churn)"
+                )
+            # DB sanity-flag suffixes (from compute_db_sanity_flags via x0b → x1 → x3).
+            # Surface high-severity flags inline; medium-severity stay in the JSON
+            # for operators who dig deeper.
+            db_suffix = ""
+            db_signups = metrics.get("db_signups")
+            if db_signups is not None:
+                db_suffix = f" · DB={db_signups}"
+            tracking_flags = s.get("tracking_sanity_flags") or []
+            tracking_suffix = ""
+            for tf in tracking_flags:
+                if tf.get("severity") == "high":
+                    tracking_suffix = f" ⚠ {tf['flag']}"
+                    break
+            lines.append(
+                f"• {name}{pt_suffix}{cap_suffix}{overcount_suffix}{tracking_suffix} "
+                f"{line_metrics}{db_suffix} → {verdict}"
+            )
+            lines.append(f"  Action: {action}")
+            # Inline the sanity-flag messages so operators get the WHY without
+            # having to grep the JSON. One bullet per flag.
+            for tf in tracking_flags:
+                lines.append(f"  ⚠ [{tf['flag']}] {tf['message']}")
+            # Verdicts that need an inline debug prompt for the operator to copy/paste:
+            # NO_DATA and GA_NO_PH_TRACKING both require investigation in the MVP repo.
+            if verdict in (VERDICT_NO_DATA, VERDICT_GA_NO_PH_TRACKING):
+                needed_prompts.add(verdict)
+        lines.append("")
+        lines.append("Universal rule:")
+        lines.append(f"• <{visitors_floor} visitors → keep running (INSUFFICIENT)")
+        lines.append(f"• ≥{visitors_floor} visitors with conv ≥{_format_rate_pct(conv_rate_go)} → promote to Phase 2 manually: fake-door → manual Phase 2 campaign → /ads-ready phase-2 → /iterate --cross --phase2 (see Phase 2 Playbook)")
+        lines.append(f"• ≥{visitors_floor} visitors with conv <{_format_rate_pct(conv_rate_go)} → stop (NO_GO)")
+
+        for prompt_name in sorted(needed_prompts):
+            body = debug_prompts.get(prompt_name)
+            if body:
+                lines.append("")
+                lines.append(f"--- {prompt_name} debug prompt ---")
+                lines.append(body)
+
+        block = "\n".join(lines)
+        if len(block) > 4000:
+            block = block[:3990] + "\n... (truncated)"
+        blocks.append(block)
+
+    return "\n\n---\n\n".join(blocks)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Compute headline verdicts and/or emit Telegram artifact for /iterate --cross.",
+    )
+    parser.add_argument("--data", default=".runs/iterate-cross-data.json", help="Input: data + signups from x2")
+    parser.add_argument("--issues", default=".runs/iterate-cross-data-issues.json", help="Input: integrity flags from x1a")
+    parser.add_argument(
+        "--scores",
+        default=None,
+        help="Optional input: pre-computed scores file. If provided, skip recomputation (used by x4 to avoid clobbering x3 output).",
+    )
+    parser.add_argument("--config", default="experiment/iterate-cross-config.yaml")
+    parser.add_argument("--run-dir", default=".runs")
+    parser.add_argument(
+        "--output",
+        default=None,
+        help="Output: write computed scores here. If omitted (and --scores not provided), scores stay in-memory only.",
+    )
+    parser.add_argument("--debug-prompts", default=".claude/patterns/iterate-cross-debug-prompts.md")
+    parser.add_argument("--emit-telegram", default=None, help="Output: write Telegram-ready text here.")
+    parser.add_argument("--dry-run", action="store_true", help="Compute outputs without writing score or Telegram artifacts.")
+    args = parser.parse_args(argv)
+
+    if not args.output and not args.emit_telegram:
+        print("ERROR: must specify at least one of --output or --emit-telegram.", file=sys.stderr)
+        return 2
+
+    config = load_config(args.config)
+    thresholds = config["thresholds"]
+    window_days = config.get("window_days", 90)
+
+    if args.scores and os.path.exists(args.scores):
+        score_data = json.load(open(args.scores))
+        scores = score_data.get("mvps", [])
+    else:
+        data = json.load(open(args.data))
+        issues_data = json.load(open(args.issues))
+        issues_by_name = {m["name"]: m for m in issues_data.get("mvps", [])}
+
+        scores = []
+        for mvp in data.get("mvps", []):
+            issues = issues_by_name.get(mvp["name"], {})
+            scores.append(compute_headline_verdict(mvp, issues, thresholds))
+
+    output = {
+        "thresholds": thresholds,
+        "window_days": window_days,
+        "mvps": sort_scores_global(scores),
+    }
+
+    if args.output and not args.dry_run:
+        json.dump(output, open(args.output, "w"), indent=2)
+        print(f"Wrote {args.output} ({len(scores)} MVPs)")
+    elif args.output:
+        print(f"DRY-RUN: would write {args.output} ({len(scores)} MVPs)")
+
+    if args.emit_telegram:
+        debug_prompts = {}
+        if args.debug_prompts and os.path.exists(args.debug_prompts):
+            debug_prompts = parse_debug_prompts(open(args.debug_prompts).read())
+        text = emit_telegram(
+            scores,
+            debug_prompts,
+            thresholds["visitors_floor"],
+            thresholds.get("conv_rate_go", 0.06),
+        )
+        if args.dry_run:
+            print(f"DRY-RUN: would write {args.emit_telegram} ({len(text)} chars)")
+        else:
+            with open(args.emit_telegram, "w") as f:
+                f.write(text)
+            print(f"Wrote {args.emit_telegram}")
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

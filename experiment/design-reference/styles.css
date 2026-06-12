@@ -1,0 +1,185 @@
+/* ============================================================
+   SELVEDGE — Premium deadstock marketplace
+   Foundation: tokens, type, base elements
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;0,6..96,600;0,6..96,700;0,6..96,800;1,6..96,400;1,6..96,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Marcellus&family=Hanken+Grotesk:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+:root {
+  /* ---- Warm neutral base ---- */
+  --paper:        #FBFAF5;
+  --linen:        #F2EEE4;
+  --linen-deep:   #E7E0D2;
+  --linen-warm:   #DCD2BF;
+
+  /* ---- Ink / text ---- */
+  --ink:          #29251D;
+  --ink-soft:     #6E6557;
+  --ink-faint:    #9A9080;
+  --line:         rgba(41, 37, 29, 0.13);
+  --line-soft:    rgba(41, 37, 29, 0.07);
+
+  /* ---- Accent: forest (primary) + clay (secondary) ---- */
+  --forest:       #2E3D31;
+  --forest-deep:  #1C2720;
+  --forest-bright:#3C5240;
+  --clay:         #A6543B;
+  --clay-soft:    #C0795E;
+  --clay-faint:   #E9D2C6;
+  --gold:         #B68A3E;
+
+  /* dynamic accent (Tweaks can override) */
+  --accent:       var(--forest);
+  --accent-deep:  var(--forest-deep);
+  --on-accent:    #F2EEE4;
+
+  /* ---- Type ---- */
+  --display: 'Bodoni Moda', Georgia, serif;
+  --sans: 'Hanken Grotesk', system-ui, sans-serif;
+  --mono: 'Space Mono', ui-monospace, monospace;
+
+  /* ---- Layout ---- */
+  --maxw: 1280px;
+  --gutter: clamp(20px, 5vw, 64px);
+  --radius: 4px;
+  --radius-lg: 10px;
+
+  --shadow-sm: 0 1px 2px rgba(41,37,29,.06), 0 4px 14px rgba(41,37,29,.05);
+  --shadow-md: 0 4px 12px rgba(41,37,29,.08), 0 18px 44px rgba(41,37,29,.10);
+  --shadow-lg: 0 10px 30px rgba(41,37,29,.12), 0 40px 90px rgba(41,37,29,.16);
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+
+body {
+  margin: 0;
+  font-family: var(--sans);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 17px;
+  line-height: 1.6;
+  font-weight: 400;
+  overflow-x: hidden;
+}
+
+/* ---------- Typography ---------- */
+.display {
+  font-family: var(--display);
+  font-weight: 500;
+  line-height: 0.98;
+  letter-spacing: -0.01em;
+}
+h1, h2, h3 { margin: 0; }
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--clay);
+  font-weight: 400;
+}
+.eyebrow-ink { color: var(--ink-soft); }
+
+.mono { font-family: var(--mono); }
+.serif { font-family: var(--display); }
+
+a { color: inherit; text-decoration: none; }
+
+/* ---------- Layout helpers ---------- */
+.wrap {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding-left: var(--gutter);
+  padding-right: var(--gutter);
+}
+.section { padding: clamp(64px, 9vw, 130px) 0; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border: none;
+  cursor: pointer;
+  padding: 15px 28px;
+  border-radius: 100px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  transition: transform .18s cubic-bezier(.2,.7,.3,1), background .2s, color .2s, box-shadow .2s;
+  white-space: nowrap;
+  line-height: 1;
+}
+.btn:active { transform: translateY(1px) scale(.99); }
+.btn-primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: 0 1px 2px rgba(41,37,29,.12);
+}
+.btn-primary:hover { background: var(--accent-deep); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.btn-clay { background: var(--clay); color: #F8EFE9; }
+.btn-clay:hover { background: #8E422C; transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.btn-ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+.btn-ghost:hover { border-color: var(--ink); background: rgba(41,37,29,.04); }
+.btn-light { background: var(--paper); color: var(--ink); }
+.btn-light:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.btn-sm { padding: 11px 20px; font-size: 14px; }
+.btn-lg { padding: 18px 34px; font-size: 16px; }
+
+/* arrow nudge */
+.btn .arr { transition: transform .2s; }
+.btn:hover .arr { transform: translateX(4px); }
+
+/* ---------- Tag / chip ---------- */
+.tag {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 5px 11px;
+  border-radius: 100px;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  background: rgba(255,255,255,.4);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+/* swatch dot */
+.dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); flex: none; }
+
+/* ---------- Misc ---------- */
+.divider { height: 1px; background: var(--line); border: 0; margin: 0; }
+
+.kicker-line { display:flex; align-items:center; gap:14px; }
+.kicker-line::after { content:''; flex:1; height:1px; background: var(--line); }
+
+img { max-width: 100%; display: block; }
+
+::selection { background: var(--clay); color: #fff; }
+
+/* scroll reveal */
+.reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.3,1); }
+.reveal.in { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  * { scroll-behavior: auto !important; }
+}
+
+/* focus */
+:focus-visible { outline: 2px solid var(--clay); outline-offset: 3px; }
+
+/* hide scrollbar utility for filter rows */
+.noscroll::-webkit-scrollbar { height: 0; width: 0; }
+.noscroll { scrollbar-width: none; }

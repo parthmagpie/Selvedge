@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Selvedge — Build Spec (Campaign Direction)</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=Bodoni+Moda:ital,opsz,wght@0,6..96,500;0,6..96,600;1,6..96,400;1,6..96,500;1,6..96,600&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --field: #1E2C26; --field-2: #16201B;
+    --bone: #F0EADD; --bone-2: #E5DCC9;
+    --clay: #B4623F; --clay-deep: #934C2E;
+    --gold: #C99A4E; --ink: #1B1814;
+    --soft: #5B5346; --line: rgba(27,24,20,.18);
+    --grot: 'Archivo', system-ui, sans-serif;
+    --disp: 'Bodoni Moda', Georgia, serif;
+    --mono: 'Space Mono', monospace;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html { -webkit-font-smoothing: antialiased; }
+  body { margin: 0; background: #3a352e; font-family: var(--grot); color: var(--ink); font-size: 12.5px; line-height: 1.55; }
+
+  .page {
+    width: 210mm; min-height: 296mm; margin: 0 auto 14px; background: var(--bone);
+    padding: 16mm 15mm 14mm; position: relative; overflow: hidden;
+    break-after: page; box-shadow: 0 6px 30px rgba(0,0,0,.3);
+    display: flex; flex-direction: column;
+  }
+  .page:last-child { break-after: auto; }
+
+  /* running footer */
+  .pfoot { margin-top: auto; padding-top: 8mm; display: flex; justify-content: space-between; align-items: baseline; font-family: var(--mono); font-size: 8.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--soft); border-top: 1px solid var(--line); }
+  .pfoot b { color: var(--clay); font-weight: 700; }
+
+  .kick { font-family: var(--mono); font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--clay); font-weight: 700; margin-bottom: 10px; }
+  h2.sec { font-family: var(--grot); font-weight: 900; font-size: 30px; line-height: .95; letter-spacing: -0.02em; text-transform: uppercase; margin: 0 0 6mm; }
+  h2.sec em { font-family: var(--disp); font-style: italic; font-weight: 500; text-transform: none; color: var(--clay); }
+  h3.sub { font-family: var(--grot); font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: .02em; margin: 8mm 0 3mm; }
+  p { margin: 0 0 8px; }
+  .muted { color: var(--soft); }
+  .mono { font-family: var(--mono); }
+  code { font-family: var(--mono); font-size: 10.5px; background: rgba(27,24,20,.07); padding: 1px 5px; border-radius: 2px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th { font-family: var(--mono); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--soft); text-align: left; padding: 5px 8px; border-bottom: 2px solid var(--ink); }
+  td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td:first-child { font-weight: 700; white-space: nowrap; }
+
+  /* ============ COVER ============ */
+  .cover { background: var(--field); color: var(--bone); }
+  .cover .pfoot { border-top-color: rgba(240,234,221,.2); color: rgba(240,234,221,.55); }
+  .cover-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); margin-bottom: 14mm; }
+  .cover h1 { font-family: var(--grot); font-weight: 900; font-size: 78px; line-height: .86; letter-spacing: -0.035em; text-transform: uppercase; margin: 0 0 10mm; }
+  .cover h1 em { font-family: var(--disp); font-style: italic; font-weight: 500; text-transform: none; color: var(--gold); font-size: .92em; }
+  .cover h1 .clay { color: var(--clay); }
+  .cover-sub { font-size: 14px; line-height: 1.6; color: rgba(240,234,221,.8); max-width: 60ch; margin-bottom: 12mm; }
+  .cover-meta { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6mm; border-top: 1px solid rgba(240,234,221,.2); padding-top: 6mm; }
+  .cover-meta div b { display: block; font-family: var(--mono); font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); margin-bottom: 3px; }
+  .cover-meta div span { font-size: 12px; color: rgba(240,234,221,.9); }
+  .cover-swatches { display: flex; gap: 4mm; margin: 12mm 0; }
+  .cover-sw { flex: 1; height: 26mm; border-radius: 2px; position: relative; overflow: hidden; }
+  .cover-sw span { position: absolute; left: 6px; bottom: 5px; font-family: var(--mono); font-size: 8px; letter-spacing: .08em; text-transform: uppercase; background: rgba(22,32,27,.85); color: var(--bone); padding: 2px 7px; border-radius: 100px; }
+
+  /* fabric weave samples (pure CSS, match site engine) */
+  .wv-linen { background-color: #D7CBB0; background-image: repeating-linear-gradient(90deg, #BCAE8E99 0 1px, transparent 1px 3px), repeating-linear-gradient(0deg, #E6DCC6aa 0 1px, transparent 1px 3px), repeating-linear-gradient(0deg, #BCAE8E55 0 1px, transparent 1px 6px); }
+  .wv-denim { background-color: #2D3A5C; background-image: repeating-linear-gradient(45deg, #3D4D7433 0 1px, transparent 1px 3px), repeating-linear-gradient(45deg, #1E2740aa 0 2px, transparent 2px 4px), repeating-linear-gradient(135deg, rgba(0,0,0,.10) 0 1px, transparent 1px 4px); }
+  .wv-flannel { background-color: #2F4034; background-image: repeating-linear-gradient(0deg, #1F2C2466 0 7px, transparent 7px 15px), repeating-linear-gradient(90deg, #1F2C2466 0 7px, transparent 7px 15px), repeating-linear-gradient(48deg, #1F2C2433 0 1px, transparent 1px 4px); }
+  .wv-satin { background-color: #5E2A2C; background-image: linear-gradient(120deg, #763A3Ccc 0%, transparent 28%, #421C1E66 55%, transparent 78%, #763A3C99 100%); }
+  .wv-cord { background-color: #9A4D32; background-image: repeating-linear-gradient(90deg, #7A3A26cc 0 1px, #B2614366 1px 4px, #7A3A26aa 4px 6px, #9A4D32 6px 9px); }
+  .wv-tweed { background-color: #797649; background-image: radial-gradient(#8E8B5C 14%, transparent 16%), radial-gradient(#5C5A36 14%, transparent 16%), repeating-linear-gradient(48deg, #5C5A3655 0 1px, transparent 1px 4px); background-size: 7px 7px, 7px 7px, 6px 6px; background-position: 0 0, 3.5px 3.5px, 0 0; }
+
+  /* ============ TOKENS ============ */
+  .pal { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin-bottom: 5mm; }
+  .pal-chip { border-radius: 3px; overflow: hidden; border: 1px solid var(--line); }
+  .pal-c { height: 17mm; }
+  .pal-t { padding: 5px 8px; background: #fff; }
+  .pal-t b { display: block; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; }
+  .pal-t span { font-family: var(--mono); font-size: 9.5px; color: var(--soft); }
+  .pal-t i { display: block; font-style: normal; font-size: 9px; color: var(--soft); margin-top: 2px; line-height: 1.35; }
+
+  .type-row { display: grid; grid-template-columns: 34mm 1fr; gap: 5mm; align-items: baseline; padding: 4mm 0; border-bottom: 1px solid var(--line); }
+  .type-meta { font-family: var(--mono); font-size: 9px; letter-spacing: .06em; color: var(--soft); line-height: 1.5; }
+  .type-meta b { color: var(--clay); display: block; font-size: 9.5px; }
+
+  .btn-row { display: flex; gap: 4mm; flex-wrap: wrap; align-items: center; margin: 3mm 0 1mm; }
+  .spec-btn { font-family: var(--grot); font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; padding: 10px 18px; border-radius: 2px; display: inline-block; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 7mm; }
+
+  /* ============ WIREFRAME BLOCKS ============ */
+  .wf { border: 1.5px solid var(--ink); border-radius: 3px; overflow: hidden; background: #fff; }
+  .wf-row { display: flex; align-items: stretch; border-bottom: 1px solid var(--line); }
+  .wf-row:last-child { border-bottom: none; }
+  .wf-cell { padding: 6px 9px; font-size: 9.5px; line-height: 1.4; }
+  .wf-label { font-family: var(--mono); font-size: 8px; letter-spacing: .1em; text-transform: uppercase; color: var(--clay); font-weight: 700; display: block; margin-bottom: 2px; }
+  .wf-dark { background: var(--field); color: rgba(240,234,221,.9); }
+  .wf-dark .wf-label { color: var(--gold); }
+  .wf-clay { background: var(--clay); color: var(--bone); }
+  .wf-clay .wf-label { color: var(--bone); }
+  .wf-bone2 { background: var(--bone-2); }
+  .wf-gold { background: var(--gold); color: var(--field); }
+
+  .note { background: rgba(201,154,78,.14); border-left: 3px solid var(--gold); padding: 8px 12px; font-size: 11px; margin: 4mm 0; }
+  .note b { text-transform: uppercase; font-size: 10px; letter-spacing: .06em; }
+
+  ul.tight { margin: 0 0 8px; padding-left: 16px; }
+  ul.tight li { margin-bottom: 4px; }
+
+  pre.block { font-family: var(--mono); font-size: 9.5px; line-height: 1.55; background: var(--field-2); color: #D8E2DC; padding: 10px 14px; border-radius: 3px; overflow: hidden; white-space: pre-wrap; margin: 0 0 4mm; }
+  pre.block .c { color: #7d9489; }
+  pre.block .k { color: var(--gold); }
+
+  @page { size: A4 portrait; margin: 0; }
+  @media print {
+    body { background: none; }
+    .page { margin: 0; box-shadow: none; width: 210mm; min-height: 296mm; }
+    *, *::before, *::after {
+      animation-delay: -99s !important; animation-duration: .001s !important;
+      animation-iteration-count: 1 !important; animation-fill-mode: both !important;
+      transition-duration: 0s !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= PAGE 1 · COVER ================= -->
+<section class="page cover" data-screen-label="Cover">
+  <div class="cover-eyebrow">◆ Design &amp; build specification · For Claude Code</div>
+  <h1>SELVEDGE<br /><span class="clay">RESCUE</span> THE <em>cloth</em><br />NOBODY COULD USE.</h1>
+  <p class="cover-sub">A premium-deadstock textile marketplace. Factories photograph leftover fabric rolls; computer vision drafts the listing; indie designers, students and upcycling brands buy pristine fabric by the yard. This document specifies the chosen art direction (&ldquo;Campaign&rdquo;) and everything needed to build the product: tokens, components, page blueprints, data model, routes and behaviours.</p>
+  <div class="cover-swatches">
+    <div class="cover-sw wv-linen"><span>Linen</span></div>
+    <div class="cover-sw wv-denim"><span>Denim</span></div>
+    <div class="cover-sw wv-flannel"><span>Wool</span></div>
+    <div class="cover-sw wv-satin"><span>Silk</span></div>
+    <div class="cover-sw wv-tweed"><span>Tweed</span></div>
+  </div>
+  <div class="cover-meta">
+    <div><b>Direction</b><span>C — &ldquo;Campaign&rdquo; · bold poster, color-blocked</span></div>
+    <div><b>Stack suggestion</b><span>React (or any SPA) · CSS custom props · hash routes</span></div>
+    <div><b>Monetisation</b><span>10% fee on sales · factory keeps 90%</span></div>
+  </div>
+  <div class="pfoot"><span><b>Selvedge</b> · Build spec v1.0</span><span>June 2026</span><span>01 / 08</span></div>
+</section>
+
+<!-- ================= PAGE 2 · PRODUCT ================= -->
+<section class="page" data-screen-label="Product overview">
+  <div class="kick">01 · Product overview</div>
+  <h2 class="sec">What we&rsquo;re <em>building</em></h2>
+  <table>
+    <tr><td style="width:34mm">Problem</td><td>High-end fashion factories landfill billions of tons of pristine leftover fabric (deadstock) — runs too small or irregular for large brands to use.</td></tr>
+    <tr><td>Solution</td><td>A marketplace where garment factories list premium textile leftovers for sale to indie designers, students and boutique upcycling brands.</td></tr>
+    <tr><td>Unique edge</td><td>Frictionless listing: a worker photographs a roll; AI estimates material, texture, colour family and approximate yardage and generates the listing instantly.</td></tr>
+    <tr><td>Why now</td><td>EU EPR mandates (2025), anti-destruction laws and Digital Product Passports (2027) turn textile waste from a write-off into a fine. Mills need a circular outlet with a paper trail.</td></tr>
+    <tr><td>Users</td><td>Buyers: sustainable fashion brands, design students, upcyclers. Sellers: textile factories &amp; mills.</td></tr>
+    <tr><td>Revenue</td><td>10% processing fee on every secondary fabric sale. €0 to list. Factory receives 90%, paid weekly.</td></tr>
+  </table>
+
+  <h3 class="sub">The four surfaces</h3>
+  <table>
+    <tr><th style="width:30mm">Route</th><th style="width:34mm">Page</th><th>Purpose</th></tr>
+    <tr><td><code>#/</code></td><td>Landing</td><td>Pitch: hero, marquee, how-it-works, featured stock, stats, why-now, closing CTA.</td></tr>
+    <tr><td><code>#/browse</code></td><td>Marketplace</td><td>Filterable grid of all listings. Material, colour family, price, yardage, sort, saved.</td></tr>
+    <tr><td><code>#/listing/:id</code></td><td>Listing detail</td><td>Gallery, AI spec sheet, buy-by-the-yard panel, mill origin card, related items.</td></tr>
+    <tr><td><code>#/upload</code></td><td>Factory upload</td><td>The magic moment: photo → AI analysis → editable draft → publish. 4-state machine.</td></tr>
+  </table>
+
+  <div class="note"><b>Priority:</b> buyers (designers/students browsing) are the primary audience for polish; the upload flow is the demo&rsquo;s &ldquo;wow&rdquo;. Build landing → browse → detail → upload, in that order.</div>
+
+  <h3 class="sub">Voice &amp; copy rules</h3>
+  <ul class="tight">
+    <li>Confident, declarative, a little editorial. Headlines in ALL CAPS with one word swapped to Bodoni italic for contrast: &ldquo;RESCUE THE <em style="font-family:'Bodoni Moda',serif">cloth</em> NOBODY COULD USE.&rdquo;</li>
+    <li>Numbers carry the argument (92M tonnes, 90% payout, 48H to live listing). Use sparingly, big.</li>
+    <li>Never say &ldquo;eco-friendly&rdquo; or &ldquo;green&rdquo;. Say <i>rescued, salvaged, second cut, deadstock</i>.</li>
+    <li>Microcopy in Space Mono, uppercase, letterspaced — reads like a spec label.</li>
+  </ul>
+  <div class="pfoot"><span><b>Selvedge</b> · Build spec v1.0</span><span>Product</span><span>02 / 08</span></div>
+</section>
+
+<!-- ================= PAGE 3 · COLOR ================= -->
+<section class="page" data-screen-label="Color tokens">
+  <div class="kick">02 · Design tokens — colour</div>
+  <h2 class="sec">Colour <em>system</em></h2>
+  <p class="muted">Four-color poster palette. Forest is the canvas, bone is the page, clay is the action, gold is the exclamation. No gradients anywhere — flat blocks only.</p>
+  <div class="pal">
+    <div class="pal-chip"><div class="pal-c" style="background:#1E2C26"></div><div class="pal-t"><b>Field</b><span>#1E2C26</span><i>--field · primary dark canvas: hero, stats, closing</i></div></div>
+    <div class="pal-chip"><div class="pal-c" style="background:#16201B"></div><div class="pal-t"><b>Field-2</b><span>#16201B</span><i>--field-2 · deeper band for contrast within dark sections</i></div></div>
+    <div class="pal-chip"><div class="pal-c" style="background:#F0EADD"></div><div class="pal-t"><b>Bone</b><span>#F0EADD</span><i>--bone · light page background, light text on dark</i></div></div>
+    <div class="pal-chip"><div class="pal-c" style="background:#E5DCC9"></div><div class="pal-t"><b>Bone-2</b><span>#E5DCC9</span><i>--bone-2 · alternate light band (featured grid)</i></div></div>
+    <div class="pal-chip"><div class="pal-c" style="background:#B4623F"></div><div class="pal-t"><b>Clay</b><span>#B4623F</span><i>--clay · primary CTA, marquee band, why-now section</i></div></div>
+    <div class="pal-chip"><div class="pal-c" style="background:#934C2E"></div><div class="pal-t"><b>Clay deep</b><span>#934C2E</span><i>--clay-deep · CTA hover state</i></div></div>
+    <div class="pal-chip"><div class="pal-c" style="background:#C99A4E"></div><div class="pal-t"><b>Gold</b><span>#C99A4E</span><i>--gold · accents: italic words, stat numerals, badge</i></div></div>
+    <div class="pal-chip"><div class="pal-c" style="background:#1B1814"></div><div class="pal-t"><b>Ink</b><span>#1B1814</span><i>--ink · text on bone; 3px rules on light sections</i></div></div>
+  </div>
+
+  <h3 class="sub">Usage rules</h3>
+  <table>
+    <tr><th style="width:42mm">Context</th><th>Rule</th></tr>
+    <tr><td>Section rhythm</td><td>Alternate full-bleed bands: field → clay (marquee) → bone (how) → bone-2 (featured) → field-2 (stats) → clay (why now) → field (closing). Every band edge is a hard cut — no shadows between sections.</td></tr>
+    <tr><td>CTAs</td><td>Primary = clay bg / bone text. Hover = clay-deep + translateY(-3px). Secondary = 1.5px outline, transparent bg. On dark: bone outline at 40% opacity.</td></tr>
+    <tr><td>Text on field</td><td>Bone at 100% for headings, rgba(240,234,221,.7–.78) for body. Never pure white.</td></tr>
+    <tr><td>Gold</td><td>Accent only — italic display words, stat numerals, the circular badge, marquee separators. Never body text, never backgrounds of large areas.</td></tr>
+    <tr><td>Muted on light</td><td>#5B5346 for secondary text on bone.</td></tr>
+    <tr><td>Lines</td><td>Light sections: 3px solid ink top-rules on cards/steps. Dark sections: 1px rgba(240,234,221,.12).</td></tr>
+  </table>
+
+  <h3 class="sub">Fabric colour data (listing chips)</h3>
+  <p class="muted" style="font-size:11px">18 named fabric colours, each with a colour <i>family</i> used by the browse filter: Neutral, Grey, Green, Blue, Warm, Red, Pink, Purple. Each has base/hi/lo values driving the procedural weave render — full table in the data file (<code>src/data.jsx</code> in the prototype project).</p>
+  <div class="btn-row">
+    <span style="width:9mm;height:9mm;border-radius:50%;background:#D7CBB0;display:inline-block"></span>
+    <span style="width:9mm;height:9mm;border-radius:50%;background:#C7B48F;display:inline-block"></span>
+    <span style="width:9mm;height:9mm;border-radius:50%;background:#9B968B;display:inline-block"></span>
+    <span style="width:9mm;height:9mm;border-radius:50%;background:#2F4034;display:inline-block"></span>
+    <span style="width:9mm;height:9mm;border-radius:50%;background:#8E9C83;display:inline-block"></span>
+    <span style="width:9mm;height:9mm;border-radius:50%;background:#2D3A5C;display:inline-block"></span>
+    <span style="width:9mm;height:9mm;border-radius:50%;background:#46618A;display:inline-block"></span>
+    <span style="width:9mm;height:9mm;border-radius:50%;background:#B5694A;display:inline-block"></span>
+    <span style="width:9mm;height:9mm;border-radius:50%;background:#9A4D32;display:inline-block"></span>
+    <span style="width:9mm;height:9mm;border-radius:50%;background:#C39A3F;display:inline-block"></span>
+    <span style="width:9mm;height:9mm;border-radius:50%;background:#5E2A2C;display:inline-block"></span>
+    <span style="width:9mm;height:9mm;border-radius:50%;background:#D6A99F;display:inline-block"></span>
+    <span style="width:9mm;height:9mm;border-radius:50%;background:#5B3A52;display:inline-block"></span>
+  </div>
+  <div class="pfoot"><span><b>Selvedge</b> · Build spec v1.0</span><span>Tokens · Colour</span><span>03 / 08</span></div>
+</section>
+
+<!-- ================= PAGE 4 · TYPE ================= -->
+<section class="page" data-screen-label="Typography">
+  <div class="kick">03 · Design tokens — typography</div>
+  <h2 class="sec">Type <em>system</em></h2>
+  <p class="muted">Three families, three jobs. Archivo shouts, Bodoni whispers, Space Mono labels. Google Fonts, weights listed below.</p>
+
+  <div class="type-row">
+    <div class="type-meta"><b>Display / UI</b>Archivo<br />400 · 600 · 700 · 800 · 900</div>
+    <div style="font-family:var(--grot);font-weight:900;font-size:40px;line-height:.9;letter-spacing:-.03em;text-transform:uppercase">RESCUE THE CLOTH</div>
+  </div>
+  <div class="type-row">
+    <div class="type-meta"><b>Accent serif</b>Bodoni Moda<br />500 · 600 + italics</div>
+    <div style="font-family:var(--disp);font-style:italic;font-weight:500;font-size:36px;line-height:1;color:var(--clay)">a second cut, by the yard</div>
+  </div>
+  <div class="type-row">
+    <div class="type-meta"><b>Spec / labels</b>Space Mono<br />400 · 700</div>
+    <div style="font-family:var(--mono);font-size:13px;letter-spacing:.18em;text-transform:uppercase">MATERIAL · LINEN — EST. YARDAGE ~42 YD — CV 96%</div>
+  </div>
+
+  <h3 class="sub">Scale (desktop 1440 → use clamp())</h3>
+  <table>
+    <tr><th>Role</th><th>Spec</th><th>Notes</th></tr>
+    <tr><td>H1 hero</td><td>Archivo 900 · clamp(46px, 8.2vw, 120px) · lh .86 · ls -0.035em · uppercase</td><td>Stacked lines; one line clay, one word Bodoni italic gold at .92em</td></tr>
+    <tr><td>H2 section</td><td>Archivo 800–900 · clamp(32px, 4.6vw, 62px) · lh .96 · uppercase</td><td>Preceded by mono kicker in clay</td></tr>
+    <tr><td>H3 card/step</td><td>Archivo 800 · 26px · uppercase</td><td></td></tr>
+    <tr><td>Stat numeral</td><td>Archivo 900 · clamp(54px, 7vw, 104px) · ls -0.04em · gold</td><td>On field-2 band</td></tr>
+    <tr><td>Body</td><td>Archivo 400 · 16–18px · lh 1.5–1.55</td><td>Max 44–46ch measure</td></tr>
+    <tr><td>Kicker / eyebrow</td><td>Space Mono 700 · 12px · ls .2em · uppercase · clay (gold on dark)</td><td>Prefix with ◆ on hero</td></tr>
+    <tr><td>Price</td><td>Archivo 800 · 22px + mono &ldquo;/yd&rdquo; 11px muted</td><td></td></tr>
+    <tr><td>Buttons</td><td>Archivo 700 · 15px · ls .03em · uppercase · radius 2px · padding 16/28</td><td></td></tr>
+  </table>
+
+  <h3 class="sub">Buttons</h3>
+  <div class="btn-row">
+    <span class="spec-btn" style="background:var(--clay);color:var(--bone)">Browse fabrics →</span>
+    <span class="spec-btn" style="border:1.5px solid var(--ink);color:var(--ink)">List your inventory</span>
+    <span class="spec-btn" style="background:var(--field);color:var(--bone)">All 42 →</span>
+    <span class="spec-btn" style="background:var(--bone);color:var(--field);border:1px solid var(--line)">On dark: bone</span>
+  </div>
+  <p class="muted" style="font-size:10.5px">Hover: translateY(-3px) + darken bg one step. Radius is always 2px — crisp poster corners, never pills. Focus ring: 2px clay outline, 3px offset.</p>
+  <div class="pfoot"><span><b>Selvedge</b> · Build spec v1.0</span><span>Tokens · Type</span><span>04 / 08</span></div>
+</section>
+
+<!-- ================= PAGE 5 · LANDING ================= -->
+<section class="page" data-screen-label="Landing blueprint">
+  <div class="kick">04 · Page blueprint</div>
+  <h2 class="sec">Landing <em>#/</em></h2>
+  <div class="two-col">
+    <div>
+      <div class="wf">
+        <div class="wf-row wf-dark"><div class="wf-cell" style="flex:1"><span class="wf-label">Nav (on field)</span>SELVEDGE wordmark 900 · links: Browse / Process / Manifesto · bone button &ldquo;List inventory&rdquo;</div></div>
+        <div class="wf-row wf-dark"><div class="wf-cell" style="flex:1.2"><span class="wf-label">Hero L</span>◆ kicker gold · H1 4 stacked lines (&ldquo;NOBODY&rdquo; in clay, &ldquo;cloth&rdquo; Bodoni italic gold) · sub 18px/.78 bone · CTA pair</div><div class="wf-cell" style="flex:.8;border-left:1px solid rgba(240,234,221,.15)"><span class="wf-label">Hero R</span>Fabric triptych: 1 tall + 2 stacked panels, 12px gap · mono tag chips · gold circular badge &ldquo;4,200 rolls rescued&rdquo; rotated -8°, overlapping bottom-left</div></div>
+        <div class="wf-row wf-clay"><div class="wf-cell" style="flex:1"><span class="wf-label">Marquee band</span>&ldquo;PREMIUM DEADSTOCK · BY THE YARD ·&rdquo; Archivo 800 26px, infinite scroll 30s, gold separators · 2px field borders top/bottom</div></div>
+        <div class="wf-row"><div class="wf-cell" style="flex:1"><span class="wf-label">How (bone)</span>Kicker + H2 · 3 steps each with 3px ink top-rule · 01/02/03 numerals 64px clay · Snap it / AI specs it / You cut it</div></div>
+        <div class="wf-row wf-bone2"><div class="wf-cell" style="flex:1"><span class="wf-label">Featured (bone-2)</span>&ldquo;FRESHLY RESCUED.&rdquo; + dark button · 3×2 grid of listing cards (spec below)</div></div>
+        <div class="wf-row wf-dark" style="background:var(--field-2)"><div class="wf-cell" style="flex:1"><span class="wf-label">Stats (field-2)</span>3 cells, 1px dividers: 92M / 90% / 48H — numerals gold 104px, caption bone .7</div></div>
+        <div class="wf-row wf-clay"><div class="wf-cell" style="flex:1"><span class="wf-label">Why now (clay)</span>H2 &ldquo;WASTE BECAME A <i>liability</i>&rdquo; (italic in field) · lede 24px · 3-col legislation list over 2px rule</div></div>
+        <div class="wf-row wf-dark"><div class="wf-cell" style="flex:1"><span class="wf-label">Closing (field)</span>Centered H1-scale &ldquo;BEAUTIFUL FABRIC DESERVES A <i>second cut</i>.&rdquo; · CTA pair · mono fine-print</div></div>
+      </div>
+    </div>
+    <div>
+      <h3 class="sub" style="margin-top:0">Behaviours</h3>
+      <ul class="tight">
+        <li>Scroll-reveal: sections fade/rise 22px once, IntersectionObserver, threshold .12. Respect <code>prefers-reduced-motion</code>.</li>
+        <li>Marquee: <code>translateX(-50%)</code> loop on a duplicated track; pause not required.</li>
+        <li>Fabric panels: <code>scale(1.06)</code> on hover, .6s ease-out.</li>
+        <li>Badge is decorative — no link.</li>
+        <li>All CTAs route: Browse → <code>#/browse</code>, List inventory → <code>#/upload</code>.</li>
+      </ul>
+      <h3 class="sub">Listing card (shared component)</h3>
+      <div class="wf" style="max-width:62mm">
+        <div class="wf-row"><div class="wf-cell wv-tweed" style="flex:1;height:30mm"></div></div>
+        <div class="wf-row"><div class="wf-cell" style="flex:1"><span class="wf-label">Bar</span><span class="mono" style="font-size:8px;letter-spacing:.06em;color:var(--clay);text-transform:uppercase">Tweed · Olive</span><br /><b style="font-size:11px">Donegal-Style Tweed</b><span style="float:right;font-weight:800">$26<i class="mono" style="font-size:8px;color:var(--soft)">/yd</i></span></div></div>
+      </div>
+      <ul class="tight" style="margin-top:3mm">
+        <li>Image 4:3, procedural weave (or photo in prod), hover zoom.</li>
+        <li>Bar: mono material·colour in clay, Archivo 700 title 18px, price 800 right-aligned.</li>
+        <li>Card bg bone on bone-2 sections (and vice versa), radius 3px, hover lift + shadow.</li>
+        <li>Whole card is the link to <code>#/listing/:id</code>.</li>
+      </ul>
+      <div class="note"><b>Imagery:</b> prototype uses a procedural CSS weave engine (12 weave types — linen, twill, denim, herringbone, rib, corduroy, bouclé, canvas, satin, tweed, flannel, velvet). In production swap to real roll photography; keep the same 4:3 / tag-chip layout.</div>
+    </div>
+  </div>
+  <div class="pfoot"><span><b>Selvedge</b> · Build spec v1.0</span><span>Blueprint · Landing</span><span>05 / 08</span></div>
+</section>
+
+<!-- ================= PAGE 6 · BROWSE + DETAIL ================= -->
+<section class="page" data-screen-label="Browse and detail blueprint">
+  <div class="kick">05 · Page blueprints</div>
+  <h2 class="sec">Browse <em>+</em> detail</h2>
+  <div class="two-col">
+    <div>
+      <h3 class="sub" style="margin-top:0">Marketplace — <code>#/browse</code></h3>
+      <div class="wf">
+        <div class="wf-row wf-dark"><div class="wf-cell" style="flex:1"><span class="wf-label">Header (field)</span>&ldquo;FRESHLY RESCUED, BY THE YARD.&rdquo; + count</div></div>
+        <div class="wf-row"><div class="wf-cell" style="flex:.36;border-right:1px solid var(--line)"><span class="wf-label">Filter rail (sticky)</span>Material checkboxes w/ counts · colour-family swatch chips · max-price slider ($8–30) · min-yardage slider (0–60) · &ldquo;saved only&rdquo; toggle · clear-all</div><div class="wf-cell" style="flex:.64"><span class="wf-label">Results</span>Sort select (Newest / Price ↑↓ / Most yardage) · removable filter chips · 3-col card grid · empty state w/ clear CTA</div></div>
+      </div>
+      <ul class="tight" style="margin-top:3mm">
+        <li>All filters AND-combine; recompute client-side on change.</li>
+        <li>Filter rail collapses to a slide-in drawer ≤860px (&ldquo;Filters · n&rdquo; button).</li>
+        <li>Saved (♥) persists to <code>localStorage["selvedge_favs"]</code>.</li>
+        <li>Card grid → 2-col ≤1180px, 2-col tight ≤560px.</li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="sub" style="margin-top:0">Listing detail — <code>#/listing/:id</code></h3>
+      <div class="wf">
+        <div class="wf-row"><div class="wf-cell" style="flex:.5;border-right:1px solid var(--line)"><span class="wf-label">Gallery (sticky)</span>1:1 main image · 4 zoom-crop thumbs (Full/Detail/Macro/Drape) · &ldquo;AI DETECTED · 96%&rdquo; chip · ♥</div><div class="wf-cell" style="flex:.5"><span class="wf-label">Buy panel</span>Badges · H1 title · colour dot + meta · story para · $price/yd + stock · yardage stepper + &ldquo;Add n yd · $total&rdquo; · swatch $3 / full-roll inquiry · reassurance row</div></div>
+        <div class="wf-row"><div class="wf-cell" style="flex:.5;border-right:1px solid var(--line)"><span class="wf-label">AI spec sheet</span>2-col grid: material, composition, weave, colour family, weight (gsm), width, available, care — mono labels, &ldquo;computer-vision draft · mill-verified&rdquo; stamp</div><div class="wf-cell" style="flex:.5"><span class="wf-label">Origin card</span>Mill texture banner · name, location, blurb · weaving-since / rolls / rating · cert tags</div></div>
+        <div class="wf-row"><div class="wf-cell" style="flex:1"><span class="wf-label">Related</span>&ldquo;IN THE SAME FAMILY.&rdquo; 4 cards — same material OR colour family</div></div>
+      </div>
+      <ul class="tight" style="margin-top:3mm">
+        <li>Stepper clamps 1…available yards; button shows live total; &ldquo;added&rdquo; confirmation state ~2.2s.</li>
+        <li>Thumbs change <code>transform: scale()</code> of the same texture (prototype); in prod, 4 real photos.</li>
+        <li>Unknown id → fall back to first listing (or 404 view).</li>
+      </ul>
+    </div>
+  </div>
+  <div class="pfoot"><span><b>Selvedge</b> · Build spec v1.0</span><span>Blueprint · Browse / Detail</span><span>06 / 08</span></div>
+</section>
+
+<!-- ================= PAGE 7 · UPLOAD ================= -->
+<section class="page" data-screen-label="Upload blueprint">
+  <div class="kick">06 · Page blueprint — the magic moment</div>
+  <h2 class="sec">Factory upload <em>#/upload</em></h2>
+  <p class="muted">A 4-state machine on a field-dark page with a centered bone &ldquo;stage&rdquo; card. Stepper: Photograph → AI drafts it → Publish.</p>
+  <table>
+    <tr><th style="width:26mm">State</th><th>Contents &amp; behaviour</th></tr>
+    <tr><td><code>choose</code></td><td>Dashed drop-zone (&ldquo;Photograph a fabric roll&rdquo; · camera icon · opens file picker; any image accepted) + 6 sample-roll tiles for the demo path. Below the stage: 3 feature stats (~8 seconds · 4 specs auto · 90% to you).</td></tr>
+    <tr><td><code>analyzing</code></td><td>Two-pane: left = photo with scan-line sweep, corner reticles, grid overlay; right = progress bar 0→100% (~4.4s) with 5 phase lines that check off in sequence: Reading weave structure → Classifying fibre &amp; material → Sampling colour family → Estimating roll yardage → Drafting your listing.</td></tr>
+    <tr><td><code>review</code></td><td>Left = photo + confidence card (e.g. 94%, animated bar, Retake). Right = form with every field pre-filled and tagged with an &ldquo;AI&rdquo; chip: title, material (select), texture, colour swatch-picker (18 colours), yardage/width/weight numeric, suggested price. Live payout calc: <b>You receive (90%) = price × yards × 0.9</b>. Publish button (clay).</td></tr>
+    <tr><td><code>published</code></td><td>Check pop animation · &ldquo;You&rsquo;re live.&rdquo; · the resulting listing card preview + &ldquo;Live now&rdquo; tag, listed time, potential payout · CTAs: List another roll / See it in the marketplace.</td></tr>
+  </table>
+  <h3 class="sub">Rules</h3>
+  <ul class="tight">
+    <li>In the prototype the &ldquo;AI&rdquo; result comes from the chosen sample&rsquo;s data after a staged delay; a real build calls a vision API and maps its response onto the same field set.</li>
+    <li>Worker never types first — every field arrives pre-filled; typing is correction, not entry. That&rsquo;s the core product promise.</li>
+    <li>Confidence ≥90% renders clay; you may flag &lt;88% fields for review tint in production.</li>
+    <li>Publishing should append to the marketplace dataset so the new listing appears in <code>#/browse</code>.</li>
+  </ul>
+  <div class="note"><b>Demo timing:</b> progress ticks every 95ms (+2–6%), phases advance at 20% intervals, review reveals at ~4.4s. Keep it under 5s — the speed <i>is</i> the pitch.</div>
+  <div class="pfoot"><span><b>Selvedge</b> · Build spec v1.0</span><span>Blueprint · Upload</span><span>07 / 08</span></div>
+</section>
+
+<!-- ================= PAGE 8 · DATA ================= -->
+<section class="page" data-screen-label="Data model">
+  <div class="kick">07 · Data model &amp; build notes</div>
+  <h2 class="sec">Data <em>&amp; logic</em></h2>
+  <div class="two-col">
+    <div>
+      <h3 class="sub" style="margin-top:0">Listing</h3>
+<pre class="block">{
+  id: <span class="k">"tweed-olive"</span>,          <span class="c">// slug, route key</span>
+  title: <span class="k">"Donegal-Style Tweed"</span>,
+  material: <span class="k">"Tweed"</span>,           <span class="c">// filter facet</span>
+  weave: <span class="k">"tweed"</span>,              <span class="c">// texture renderer key</span>
+  color: <span class="k">"olive"</span>, colorName: <span class="k">"Olive"</span>,
+  yards: 16, width: 58,        <span class="c">// in · usable</span>
+  price: 26,                   <span class="c">// $/yd</span>
+  weight: 380,                 <span class="c">// gsm</span>
+  factory: <span class="k">"Galway Weft & Warp"</span>,
+  location: <span class="k">"Galway, IE"</span>,
+  composition: <span class="k">"100% Lambswool"</span>,
+  confidence: 85,              <span class="c">// AI estimate %</span>
+  addedDays: 13,               <span class="c">// sort: newest</span>
+  badges: [<span class="k">"Traceable"</span>, <span class="k">"Heritage loom"</span>],
+  story: <span class="k">"Flecked lambswool tweed…"</span>,
+  care: <span class="k">"Dry clean only"</span>
+}</pre>
+      <h3 class="sub">Factory</h3>
+<pre class="block">{
+  location, since,             <span class="c">// "Galway, Ireland", 1972</span>
+  rolls, rating,               <span class="c">// 16, 4.7</span>
+  certs: [<span class="k">"Heritage loom"</span>],
+  blurb
+}</pre>
+    </div>
+    <div>
+      <h3 class="sub" style="margin-top:0">Derived &amp; persisted</h3>
+      <ul class="tight">
+        <li><b>Colour family</b> comes from the colour token table (Neutral/Grey/Green/Blue/Warm/Red/Pink/Purple) — the browse filter facets on it.</li>
+        <li><b>Favourites</b>: <code>localStorage["selvedge_favs"]</code>, JSON array of ids.</li>
+        <li><b>Payout</b> = price × yards × 0.9 (10% platform fee). Shown in upload review + published states.</li>
+        <li><b>Sort keys</b>: addedDays asc (newest), price asc/desc, yards desc.</li>
+      </ul>
+      <h3 class="sub">Build checklist</h3>
+      <ul class="tight">
+        <li>Hash router, 4 routes; scroll-to-top on change; nav state highlights.</li>
+        <li>Shared components: Nav, Footer, ListingCard, FabricSwatch (texture), Icon set (thin line, 1.6 stroke).</li>
+        <li>Responsive: 1180 / 940 / 860 / 620 / 560 breakpoints (grid steps, filter drawer, nav burger).</li>
+        <li>Reduced motion: kill marquee + reveals under <code>prefers-reduced-motion</code>.</li>
+        <li>Accessibility: 44px+ hit targets, focus-visible rings (2px clay), alt text on fabric images, labels on all filter controls.</li>
+        <li>Min text sizes: 12px UI floor; body 16px+.</li>
+      </ul>
+      <h3 class="sub">Reference implementation</h3>
+      <p style="font-size:11px">A working HTML/React prototype of all four pages (Campaign direction: <code>Selvedge — Directions.html</code>, full site: <code>Selvedge.html</code>) exists in the design project — use it as the source of truth for spacing, copy and the procedural weave CSS. Lift the weave engine (<code>fabricBg()</code>) and full 18-listing dataset (<code>src/data.jsx</code>) verbatim.</p>
+      <div class="note"><b>North star:</b> it should feel like a printed campaign poster that happens to be shoppable — hard colour cuts, huge caps, one italic wink per headline, mono spec labels everywhere.</div>
+    </div>
+  </div>
+  <div class="pfoot"><span><b>Selvedge</b> · Build spec v1.0</span><span>Data · Notes</span><span>08 / 08</span></div>
+</section>
+
+</body>
+</html>

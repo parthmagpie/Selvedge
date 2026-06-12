@@ -1,0 +1,39 @@
+# Selvedge — Premium Deadstock Textile Marketplace
+
+## What is Selvedge?
+
+Selvedge is a marketplace connecting textile factories with indie designers, sustainable fashion brands, and design students. We help rescue premium deadstock fabric — pristine leftover rolls from the world's best mills that would otherwise end up in landfills.
+
+## The Problem
+
+High-end fashion manufacturing facilities dump billions of tons of high-quality, pristine leftover fabric (deadstock) into landfills because large brands have no use for small, irregular yardages. This is environmentally wasteful and economically inefficient.
+
+## Our Solution
+
+A simple factory-facing app where workers photograph a fabric roll. Our AI estimates material type, texture, color family, and approximate yardage based on the image, generating an instantaneous product listing with zero data entry friction.
+
+## Target Users
+
+- **Indie designers** looking for unique, premium fabrics at accessible prices
+- **Sustainable fashion brands** seeking authentic circular economy materials
+- **Design students** who need quality textiles for projects and portfolios
+- **Textile factories** wanting to monetize surplus inventory instead of discarding it
+
+## Key Features
+
+1. **AI-Powered Listing** — Photo a fabric roll, get an instant listing with auto-detected specs
+2. **Filtered Marketplace** — Browse by material, color family, price range, and yardage
+3. **Factory Direct** — Source directly from certified mills worldwide
+4. **Sustainability First** — Every yard sold is a yard saved from landfill
+
+## Business Model
+
+10% processing fee on all secondary fabric sales.
+
+## Why Now
+
+Global sustainability legislation (including EU EPR mandates) is penalizing corporate textile waste, forcing manufacturers to find circular economic solutions. Selvedge provides that solution.
+
+## Contact
+
+For partnerships, press inquiries, or factory onboarding: hello@selvedge.com

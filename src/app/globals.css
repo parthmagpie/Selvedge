@@ -1,0 +1,666 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   SELVEDGE — Premium Deadstock Textile Marketplace
+   Design Direction: Campaign (bold poster, color-blocked)
+   ============================================================ */
+
+/* --- Google Fonts: Archivo, Bodoni Moda, Space Mono --- */
+@import url('https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=Bodoni+Moda:ital,opsz,wght@0,6..96,500;0,6..96,600;1,6..96,400;1,6..96,500;1,6..96,600&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+@theme inline {
+    /* Typography */
+    --font-heading: 'Archivo', system-ui, sans-serif;
+    --font-sans: 'Archivo', system-ui, sans-serif;
+    --font-display: 'Bodoni Moda', Georgia, serif;
+    --font-mono: 'Space Mono', ui-monospace, monospace;
+
+    /* Selvedge Brand Colors */
+    --color-field: var(--field);
+    --color-field-2: var(--field-2);
+    --color-bone: var(--bone);
+    --color-bone-2: var(--bone-2);
+    --color-clay: var(--clay);
+    --color-clay-deep: var(--clay-deep);
+    --color-gold: var(--gold);
+    --color-ink: var(--ink);
+    --color-soft: var(--soft);
+    --color-line: var(--line);
+
+    /* Shadcn Semantic Mapping */
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+
+    /* Border Radius - Crisp poster aesthetic */
+    --radius: 3px;
+    --radius-sm: 2px;
+    --radius-md: 3px;
+    --radius-lg: 4px;
+    --radius-xl: 6px;
+    --radius-2xl: 8px;
+    --radius-3xl: 10px;
+    --radius-4xl: 12px;
+}
+
+:root {
+    /* ============================================================
+       SELVEDGE BRAND TOKENS
+       4-color poster palette: Field, Bone, Clay, Gold
+       ============================================================ */
+
+    /* --- Primary Dark Canvas --- */
+    --field: #1E2C26;
+    --field-2: #16201B;
+
+    /* --- Light Backgrounds --- */
+    --bone: #F0EADD;
+    --bone-2: #E5DCC9;
+
+    /* --- Primary CTA (Terracotta) --- */
+    --clay: #B4623F;
+    --clay-deep: #934C2E;
+    --clay-soft: #C0795E;
+
+    /* --- Accent (Gold) --- */
+    --gold: #C99A4E;
+
+    /* --- Text --- */
+    --ink: #1B1814;
+    --soft: #5B5346;
+    --ink-faint: #9A9080;
+
+    /* --- Lines & Borders --- */
+    --line: rgba(27, 24, 20, 0.18);
+    --line-soft: rgba(27, 24, 20, 0.07);
+
+    /* --- Light text on dark backgrounds --- */
+    --bone-text: rgba(240, 234, 221, 1);
+    --bone-text-muted: rgba(240, 234, 221, 0.78);
+    --bone-text-faint: rgba(240, 234, 221, 0.55);
+
+    /* --- Dark section dividers --- */
+    --dark-line: rgba(240, 234, 221, 0.12);
+
+    /* ============================================================
+       SHADCN SEMANTIC TOKENS (mapped to Selvedge palette)
+       ============================================================ */
+
+    /* Background & Foreground */
+    --background: #F0EADD;
+    --foreground: #1B1814;
+
+    /* Card */
+    --card: #F0EADD;
+    --card-foreground: #1B1814;
+
+    /* Popover */
+    --popover: #F0EADD;
+    --popover-foreground: #1B1814;
+
+    /* Primary (Clay - CTA color) */
+    --primary: #B4623F;
+    --primary-foreground: #F0EADD;
+
+    /* Secondary (Field - dark alternative) */
+    --secondary: #1E2C26;
+    --secondary-foreground: #F0EADD;
+
+    /* Muted */
+    --muted: #E5DCC9;
+    --muted-foreground: #5B5346;
+
+    /* Accent (Gold) */
+    --accent: #C99A4E;
+    --accent-foreground: #1B1814;
+
+    /* Destructive */
+    --destructive: #B4623F;
+
+    /* Border & Input */
+    --border: rgba(27, 24, 20, 0.18);
+    --input: rgba(27, 24, 20, 0.18);
+    --ring: #B4623F;
+
+    /* Charts (using brand palette) */
+    --chart-1: #B4623F;
+    --chart-2: #C99A4E;
+    --chart-3: #1E2C26;
+    --chart-4: #5B5346;
+    --chart-5: #934C2E;
+
+    /* Sidebar */
+    --sidebar: #F0EADD;
+    --sidebar-foreground: #1B1814;
+    --sidebar-primary: #B4623F;
+    --sidebar-primary-foreground: #F0EADD;
+    --sidebar-accent: #E5DCC9;
+    --sidebar-accent-foreground: #1B1814;
+    --sidebar-border: rgba(27, 24, 20, 0.18);
+    --sidebar-ring: #B4623F;
+
+    /* ============================================================
+       SHADOWS (warm ink-tinted, never pure black)
+       ============================================================ */
+    --shadow-sm: 0 1px 2px rgba(27, 24, 20, 0.06), 0 4px 14px rgba(27, 24, 20, 0.05);
+    --shadow-md: 0 4px 12px rgba(27, 24, 20, 0.08), 0 18px 44px rgba(27, 24, 20, 0.10);
+    --shadow-lg: 0 10px 30px rgba(27, 24, 20, 0.12), 0 40px 90px rgba(27, 24, 20, 0.16);
+
+    /* ============================================================
+       LAYOUT
+       ============================================================ */
+    --maxw: 1280px;
+    --gutter: clamp(20px, 5vw, 64px);
+}
+
+/* Dark mode: Selvedge doesn't use system dark mode - it uses
+   alternating field/bone sections within the page itself */
+.dark {
+    --background: #1E2C26;
+    --foreground: #F0EADD;
+    --card: #16201B;
+    --card-foreground: #F0EADD;
+    --popover: #16201B;
+    --popover-foreground: #F0EADD;
+    --primary: #B4623F;
+    --primary-foreground: #F0EADD;
+    --secondary: #E5DCC9;
+    --secondary-foreground: #1B1814;
+    --muted: #16201B;
+    --muted-foreground: rgba(240, 234, 221, 0.78);
+    --accent: #C99A4E;
+    --accent-foreground: #1B1814;
+    --destructive: #B4623F;
+    --border: rgba(240, 234, 221, 0.12);
+    --input: rgba(240, 234, 221, 0.15);
+    --ring: #C99A4E;
+    --chart-1: #B4623F;
+    --chart-2: #C99A4E;
+    --chart-3: #F0EADD;
+    --chart-4: rgba(240, 234, 221, 0.78);
+    --chart-5: #934C2E;
+    --sidebar: #16201B;
+    --sidebar-foreground: #F0EADD;
+    --sidebar-primary: #B4623F;
+    --sidebar-primary-foreground: #F0EADD;
+    --sidebar-accent: #1E2C26;
+    --sidebar-accent-foreground: #F0EADD;
+    --sidebar-border: rgba(240, 234, 221, 0.12);
+    --sidebar-ring: #C99A4E;
+}
+
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+    }
+    body {
+        @apply bg-background text-foreground;
+        font-family: var(--font-sans);
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+    }
+    html {
+        font-family: var(--font-sans);
+    }
+
+    /* Selection color using clay */
+    ::selection {
+        background: var(--clay);
+        color: var(--bone);
+    }
+
+    /* Focus ring using clay */
+    :focus-visible {
+        outline: 2px solid var(--clay);
+        outline-offset: 3px;
+    }
+}
+
+/* ============================================================
+   TYPOGRAPHY UTILITIES
+   ============================================================ */
+
+@layer utilities {
+    /* Display serif (Bodoni Moda) */
+    .font-display {
+        font-family: var(--font-display);
+    }
+
+    /* Monospace (Space Mono) */
+    .font-mono {
+        font-family: var(--font-mono);
+    }
+
+    /* Eyebrow/kicker text */
+    .eyebrow {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--clay);
+    }
+
+    .eyebrow-gold {
+        color: var(--gold);
+    }
+
+    /* Section title with italic accent */
+    .sec-title {
+        font-family: var(--font-sans);
+        font-weight: 900;
+        font-size: clamp(32px, 4.6vw, 62px);
+        line-height: 0.96;
+        letter-spacing: -0.02em;
+        text-transform: uppercase;
+    }
+
+    .sec-title em {
+        font-family: var(--font-display);
+        font-style: italic;
+        font-weight: 500;
+        text-transform: none;
+        color: var(--clay);
+    }
+
+    /* Hero title */
+    .hero-title {
+        font-family: var(--font-sans);
+        font-weight: 900;
+        font-size: clamp(46px, 8.2vw, 120px);
+        line-height: 0.86;
+        letter-spacing: -0.035em;
+        text-transform: uppercase;
+    }
+
+    .hero-title em {
+        font-family: var(--font-display);
+        font-style: italic;
+        font-weight: 500;
+        text-transform: none;
+        color: var(--gold);
+        font-size: 0.92em;
+    }
+
+    /* Stat numerals */
+    .stat-num {
+        font-family: var(--font-sans);
+        font-weight: 900;
+        font-size: clamp(54px, 7vw, 104px);
+        letter-spacing: -0.04em;
+        color: var(--gold);
+        line-height: 1;
+    }
+
+    /* Muted text on light backgrounds */
+    .text-soft {
+        color: var(--soft);
+    }
+
+    /* Text on dark backgrounds */
+    .text-bone {
+        color: var(--bone-text);
+    }
+
+    .text-bone-muted {
+        color: var(--bone-text-muted);
+    }
+
+    /* Brand colors */
+    .text-clay {
+        color: var(--clay);
+    }
+
+    .text-gold {
+        color: var(--gold);
+    }
+
+    .text-ink {
+        color: var(--ink);
+    }
+
+    /* Background colors */
+    .bg-field {
+        background-color: var(--field);
+    }
+
+    .bg-field-2 {
+        background-color: var(--field-2);
+    }
+
+    .bg-bone {
+        background-color: var(--bone);
+    }
+
+    .bg-bone-2 {
+        background-color: var(--bone-2);
+    }
+
+    .bg-clay {
+        background-color: var(--clay);
+    }
+
+    /* Shadow utilities */
+    .shadow-selvedge-sm {
+        box-shadow: var(--shadow-sm);
+    }
+
+    .shadow-selvedge-md {
+        box-shadow: var(--shadow-md);
+    }
+
+    .shadow-selvedge-lg {
+        box-shadow: var(--shadow-lg);
+    }
+
+    /* Layout utilities */
+    .wrap {
+        max-width: var(--maxw);
+        margin: 0 auto;
+        padding-left: var(--gutter);
+        padding-right: var(--gutter);
+    }
+
+    .section-spacing {
+        padding-top: clamp(64px, 9vw, 130px);
+        padding-bottom: clamp(64px, 9vw, 130px);
+    }
+
+    /* Line utilities */
+    .border-line {
+        border-color: var(--line);
+    }
+
+    .border-dark-line {
+        border-color: var(--dark-line);
+    }
+
+    /* 3px top rule for cards/steps on light backgrounds */
+    .rule-top {
+        border-top: 3px solid var(--ink);
+    }
+}
+
+/* ============================================================
+   SCROLL REVEAL ANIMATIONS
+   ============================================================ */
+
+@layer utilities {
+    .reveal {
+        opacity: 0;
+        transform: translateY(22px);
+        transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.2, 0.7, 0.3, 1);
+    }
+
+    .reveal.in {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .reveal {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+
+    * {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ============================================================
+   BUTTON STYLES
+   ============================================================ */
+
+@layer components {
+    .btn-selvedge {
+        font-family: var(--font-sans);
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        padding: 16px 28px;
+        border-radius: 2px;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        transition: transform 0.18s cubic-bezier(0.2, 0.7, 0.3, 1),
+                    background 0.2s,
+                    color 0.2s,
+                    box-shadow 0.2s;
+        white-space: nowrap;
+        line-height: 1;
+        cursor: pointer;
+        border: none;
+    }
+
+    .btn-selvedge:active {
+        transform: translateY(1px) scale(0.99);
+    }
+
+    .btn-primary-clay {
+        background: var(--clay);
+        color: var(--bone);
+    }
+
+    .btn-primary-clay:hover {
+        background: var(--clay-deep);
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .btn-secondary-outline {
+        background: transparent;
+        color: var(--ink);
+        border: 1.5px solid var(--ink);
+    }
+
+    .btn-secondary-outline:hover {
+        border-color: var(--clay);
+        color: var(--clay);
+    }
+
+    .btn-on-dark {
+        background: var(--bone);
+        color: var(--field);
+    }
+
+    .btn-on-dark:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-md);
+    }
+}
+
+/* ============================================================
+   MARQUEE ANIMATION
+   ============================================================ */
+
+@keyframes marquee-scroll {
+    to {
+        transform: translateX(-50%);
+    }
+}
+
+@layer utilities {
+    .marquee-track {
+        display: flex;
+        gap: 56px;
+        width: max-content;
+        animation: marquee-scroll 30s linear infinite;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .marquee-track {
+        animation: none;
+    }
+}
+
+/* ============================================================
+   AI ANALYSIS SCAN ANIMATION (Signature Animation)
+   ============================================================ */
+
+@keyframes scan {
+    0%, 100% {
+        top: 4%;
+    }
+    50% {
+        top: 94%;
+    }
+}
+
+@layer utilities {
+    .scan-line {
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--clay-soft), transparent);
+        box-shadow: 0 0 18px 4px rgba(192, 121, 94, 0.7);
+        animation: scan 2.6s ease-in-out infinite;
+    }
+}
+
+@keyframes fill-bar {
+    from {
+        width: 0;
+    }
+}
+
+@layer utilities {
+    .progress-fill {
+        animation: fill-bar 1.4s ease both;
+    }
+}
+
+/* ============================================================
+   FLOATING ANIMATION (for AI spec card)
+   ============================================================ */
+
+@keyframes floaty {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-9px);
+    }
+}
+
+@layer utilities {
+    .float-animation {
+        animation: floaty 5s ease-in-out infinite;
+    }
+}
+
+/* ============================================================
+   PULSE ANIMATION (for AI status dot)
+   ============================================================ */
+
+@keyframes pulse-clay {
+    0% {
+        box-shadow: 0 0 0 0 rgba(166, 84, 59, 0.45);
+    }
+    70% {
+        box-shadow: 0 0 0 8px rgba(166, 84, 59, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(166, 84, 59, 0);
+    }
+}
+
+@layer utilities {
+    .pulse-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--clay);
+        animation: pulse-clay 1.8s infinite;
+    }
+}
+
+/* ============================================================
+   PROCEDURAL FABRIC WEAVE TEXTURES (CSS-only)
+   ============================================================ */
+
+@layer utilities {
+    .weave-linen {
+        background-color: #D7CBB0;
+        background-image:
+            repeating-linear-gradient(90deg, #BCAE8E99 0 1px, transparent 1px 3px),
+            repeating-linear-gradient(0deg, #E6DCC6aa 0 1px, transparent 1px 3px),
+            repeating-linear-gradient(0deg, #BCAE8E55 0 1px, transparent 1px 6px);
+    }
+
+    .weave-denim {
+        background-color: #2D3A5C;
+        background-image:
+            repeating-linear-gradient(45deg, #3D4D7433 0 1px, transparent 1px 3px),
+            repeating-linear-gradient(45deg, #1E2740aa 0 2px, transparent 2px 4px),
+            repeating-linear-gradient(135deg, rgba(0,0,0,0.10) 0 1px, transparent 1px 4px);
+    }
+
+    .weave-flannel {
+        background-color: #2F4034;
+        background-image:
+            repeating-linear-gradient(0deg, #1F2C2466 0 7px, transparent 7px 15px),
+            repeating-linear-gradient(90deg, #1F2C2466 0 7px, transparent 7px 15px),
+            repeating-linear-gradient(48deg, #1F2C2433 0 1px, transparent 1px 4px);
+    }
+
+    .weave-satin {
+        background-color: #5E2A2C;
+        background-image: linear-gradient(120deg, #763A3Ccc 0%, transparent 28%, #421C1E66 55%, transparent 78%, #763A3C99 100%);
+    }
+
+    .weave-corduroy {
+        background-color: #9A4D32;
+        background-image: repeating-linear-gradient(90deg, #7A3A26cc 0 1px, #B2614366 1px 4px, #7A3A26aa 4px 6px, #9A4D32 6px 9px);
+    }
+
+    .weave-tweed {
+        background-color: #797649;
+        background-image:
+            radial-gradient(#8E8B5C 14%, transparent 16%),
+            radial-gradient(#5C5A36 14%, transparent 16%),
+            repeating-linear-gradient(48deg, #5C5A3655 0 1px, transparent 1px 4px);
+        background-size: 7px 7px, 7px 7px, 6px 6px;
+        background-position: 0 0, 3.5px 3.5px, 0 0;
+    }
+}

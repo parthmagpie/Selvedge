@@ -1,154 +1,201 @@
-# experiment.yaml — Describe your experiment
+# experiment.yaml — Selvedge: Premium Deadstock Textile Marketplace
 #
-# RECOMMENDED: Run `/spec 'your idea'` in Claude Code — it fills this file
-# automatically with hypotheses, behaviors, variants, and stack choices.
-#
-# ALTERNATIVE: Fill in manually. Replace every "TODO" value with your content.
-# See idea/experiment.example.yaml for a complete worked example.
-#
-# When you're done (either way), run: make validate → /bootstrap
+# Filled in from Claude Design handoff bundle (Campaign direction).
+# Design spec: /tmp/mvp4/project/Selvedge Build Spec.html
 
 # --- 1. Identity ---
-name: my-experiment          # Lowercase slug, hyphens only (e.g., "quick-bill"). Used in analytics.
-# type: web-app               # Product archetype (default: web-app). See .claude/archetypes/
-# level: 2                    # Experiment scope: 1 (Pitch), 2 (Prototype), 3 (Product).
-                               # /spec sets this automatically. Manual: omit to let /bootstrap infer from stack.
+name: selvedge
+owner: parth
+type: web-app
+level: 2                       # Prototype: landing + functional marketplace + upload flow
 status: draft
-# quality: production is always active (TDD, per-task implementer, spec review).
-                               # This field is reserved for future use. Do not set quality: mvp.
 
 # --- 2. Intent ---
 description: |
-  TODO: Describe the problem and your proposed solution in 2-3 sentences.
-  Who has this problem? What does the user get that they don't have today?
+  High-end fashion manufacturing facilities dump billions of tons of high-quality,
+  pristine leftover fabric (deadstock) into landfills because large brands have no
+  use for small, irregular yardages. Selvedge is a marketplace that lets garment
+  factories list their premium leftover textile scraps for sale to indie designers,
+  students, and boutique upcycling brands.
 
-thesis: "TODO: If [action], then [outcome], as measured by [metric]"
-target_user: "TODO: Be specific (e.g., freelance designers billing <5 clients/month)"
+  The unique edge: a factory worker photographs a fabric roll, and computer vision
+  estimates material type, texture, color family, and approximate yardage — generating
+  an instant product listing with zero data entry.
+
+thesis: "If factories can list deadstock fabric in under 60 seconds via AI photo upload, then 10+ factories will list at least 5 rolls within the first month, as measured by published listings"
+target_user: "Sustainable fashion brands, indie designers, design students, and textile factories looking to monetize surplus inventory"
 
 distribution: |
-  TODO: How will you get this in front of target users?
-  e.g., Post in r/freelance, Indie Hackers, LinkedIn outreach
+  - Post in sustainable fashion subreddits (r/sustainablefashion, r/sewing)
+  - LinkedIn outreach to textile factory sustainability managers
+  - Partner with fashion design schools for student pilot
+  - Indie Hackers and Product Hunt for initial traction
 
-# hypotheses:
-#   - id: h-01
-#     category: demand          # demand | reach | feasibility | monetize | retain
-#     statement: "TODO: Testable prediction with specific numbers"
-#     success_metric: "TODO: What to measure"
-#     threshold: "TODO: Pass/fail number (e.g., > 5% CTR)"
-#     priority_score: 90        # 0-100, higher = test first
-#     experiment_level: 1       # Minimum level needed to test this
-#     depends_on: []
-#     status: pending           # pending | resolved
+hypotheses:
+  - id: h-01
+    category: demand
+    statement: ">5% of designers who visit the landing page click 'Browse fabrics'"
+    metric:
+      formula: "cta_click / visit_landing"
+      threshold: 0.05
+      operator: gte
+    priority_score: 90
+    experiment_level: 1
+    depends_on: []
+    status: pending
+  - id: h-02
+    category: activate
+    statement: ">30% of visitors who browse will save at least one fabric to favorites"
+    metric:
+      formula: "fabric_saved / browse_started"
+      threshold: 0.30
+      operator: gte
+    priority_score: 80
+    experiment_level: 2
+    depends_on: [h-01]
+    status: pending
+  - id: h-03
+    category: activate
+    statement: "Factory workers can create a listing in under 60 seconds using the AI upload flow"
+    metric:
+      formula: "listing_published / upload_started"
+      threshold: 0.50
+      operator: gte
+    priority_score: 85
+    experiment_level: 2
+    depends_on: []
+    status: pending
+  - id: h-04
+    category: demand
+    statement: ">10% of designers who view a listing detail page will add yardage to cart"
+    metric:
+      formula: "add_to_cart / view_listing"
+      threshold: 0.10
+      operator: gte
+    priority_score: 75
+    experiment_level: 2
+    depends_on: [h-02]
+    status: pending
 
 # --- 3. Behaviors ---
-# Given/when/then specifications derived from hypotheses.
-# Each behavior IS a feature requirement — they replace the features list.
-# behaviors:
-#   - id: b-01
-#     hypothesis_id: h-01
-#     given: "TODO: Initial condition"
-#     when: "TODO: User action or trigger"
-#     then: "TODO: Observable, measurable outcome"
-#     tests:
-#       - "TODO: Verification assertion"
-#     level: 1
-#   # System behavior example:
-#   - id: b-05
-#     actor: system             # system | cron (default: user)
-#     trigger: "TODO: What starts this (e.g., stripe webhook checkout.session.completed)"
-#     hypothesis_id: h-03
-#     given: "TODO: Initial condition"
-#     when: "TODO: System event"
-#     then: "TODO: Observable outcome"
-#     tests:
-#       - "TODO: Verification assertion"
-#     level: 3
+behaviors:
+  - id: b-01
+    hypothesis_id: h-01
+    pages: [landing]
+    given: "A designer or factory worker visits the Selvedge landing page"
+    when: "They read the value proposition and see the fabric collage"
+    then: "They click 'Browse fabrics' or 'List your inventory' CTA"
+    tests:
+      - "Landing page renders hero with fabric tiles and AI spec card"
+      - "CTA buttons are visible and clickable"
+      - "Mill marquee scrolls with factory names"
+    level: 1
+  - id: b-02
+    hypothesis_id: h-02
+    pages: [browse]
+    given: "A designer clicks 'Browse fabrics' from landing"
+    when: "They filter by material, color family, price, and yardage"
+    then: "They see a filtered grid of listing cards and can save favorites"
+    tests:
+      - "Filter panel shows material checkboxes with counts"
+      - "Color family swatch chips toggle filter state"
+      - "Price and yardage sliders update results in real-time"
+      - "Favorites persist to localStorage"
+    level: 2
+  - id: b-03
+    hypothesis_id: h-04
+    pages: [listing]
+    given: "A designer clicks on a listing card"
+    when: "They view the gallery, AI spec sheet, and buy panel"
+    then: "They can select yardage and click 'Add to order'"
+    tests:
+      - "Gallery shows 4 zoom levels of the fabric texture"
+      - "AI spec sheet displays material, composition, weave, color, weight, width"
+      - "Yardage stepper clamps to available stock"
+      - "Add button shows live price calculation"
+    level: 2
+  - id: b-04
+    hypothesis_id: h-03
+    pages: [upload]
+    given: "A factory worker visits the upload page"
+    when: "They photograph a fabric roll (or select a sample)"
+    then: "AI analyzes the image and auto-fills a draft listing in <10 seconds"
+    tests:
+      - "Drop zone accepts image upload or sample selection"
+      - "Analysis animation shows progress through 5 phases"
+      - "Review form pre-fills title, material, texture, color, yardage, width, weight, price"
+      - "Each field shows 'AI' badge indicating auto-detection"
+    level: 2
+  - id: b-05
+    hypothesis_id: h-03
+    pages: [upload]
+    given: "AI has drafted a listing with pre-filled fields"
+    when: "The factory worker reviews, optionally edits, and clicks 'Publish'"
+    then: "The listing goes live with a success confirmation and payout estimate"
+    tests:
+      - "Confidence meter shows AI confidence percentage"
+      - "Payout calculator shows 90% of (price x yards)"
+      - "Published state shows the listing card with 'Live now' badge"
+      - "CTAs offer 'List another roll' and 'See it in marketplace'"
+    level: 2
 
 # --- 4. Journey ---
-# The user journey from landing to value delivery.
-# Drives ux-journeyer, funnel tests, and plan reviews.
 golden_path:
-  - step: "TODO: What happens first (e.g., Visit landing page)"
+  - step: "Visit landing page"
     event: visit_landing
     page: landing
-  - step: "TODO: What action delivers value?"
-    event: activate
-    page: TODO
-target_clicks: 3
+  - step: "Click 'Browse fabrics' CTA"
+    event: cta_click
+    page: landing
+  - step: "Browse marketplace with filters"
+    event: browse_started
+    page: browse
+  - step: "Click on a listing card"
+    event: view_listing
+    page: browse
+  - step: "Add yardage to cart"
+    event: add_to_cart
+    page: listing
+target_clicks: 4
 
-# --- 5. Variants (optional) ---
-# Test different messaging for the same product. Each variant gets its own
-# landing page URL (/v/<slug>) and its own ad group in the distribution channel.
-# Omit this section for a single-variant experiment (the default).
-# variants:
-#   - slug: TODO
-#     headline: "TODO: Value proposition variant A"
-#     subheadline: "TODO: How it works, variant A"
-#     cta: "TODO: Action verb + outcome"
-#     promise: "TODO: Core benefit in one phrase"         # generated by /spec
-#     proof: "TODO: Evidence or credibility signal"       # generated by /spec
-#     urgency: "TODO: Why act now"                        # generated by /spec
-#     pain_points:
-#       - "TODO: Pain point 1"
-#       - "TODO: Pain point 2"
-#       - "TODO: Pain point 3"
-#   - slug: TODO
-#     headline: "TODO: Value proposition variant B"
-#     subheadline: "TODO: How it works, variant B"
-#     cta: "TODO: Action verb + outcome"
-#     promise: "TODO: Core benefit in one phrase"         # generated by /spec
-#     proof: "TODO: Evidence or credibility signal"       # generated by /spec
-#     urgency: "TODO: Why act now"                        # generated by /spec
-#     pain_points:
-#       - "TODO: Pain point 1"
-#       - "TODO: Pain point 2"
-#       - "TODO: Pain point 3"
+# --- 5. Variants (omitted for single-variant MVP) ---
+# Using Campaign direction from Claude Design. See experiment/design-reference/
+# Core messaging:
+#   - Headline: "RESCUE THE cloth NOBODY COULD USE."
+#   - Tagline: "Premium deadstock, by the yard"
+#   - CTA: "Browse fabrics" / "List your inventory"
 
 # --- 6. Funnel ---
-# funnel:
-#   reach:
-#     metric: "TODO: Top-of-funnel metric (e.g., Ad CTR)"
-#     threshold: "TODO: Pass/fail (e.g., > 2%)"
-#     available_from: L1
-#   demand:
-#     metric: "TODO: Signup/interest metric"
-#     threshold: "TODO: Pass/fail (e.g., > 5%)"
-#     available_from: L1
-#   monetize:
-#     metric: "TODO: Revenue/pricing metric"
-#     threshold: "TODO: Pass/fail (e.g., > 7%)"
-#     available_from: L2
-#   retain:
-#     metric: "TODO: Retention metric"
-#     threshold: "TODO: Pass/fail (e.g., > 30%)"
-#     available_from: L3
-# decision_framework:
-#   scale: "TODO: When to scale (e.g., All tested dimensions >= threshold)"
-#   refine: "TODO: When to refine (e.g., Bottleneck ratio >= 0.7)"
-#   pivot: "TODO: When to pivot (e.g., Bottleneck ratio < 0.7)"
-#   kill: "TODO: When to kill (e.g., Top-funnel < 0.5)"
+funnel:
+  available_from:
+    reach: L1
+    demand: L1
+    activate: L2
+    monetize: L3
+    retain: L3
+  decision_framework:
+    scale: "All tested dimensions >= 1.0"
+    kill: "Any top-funnel (REACH or DEMAND) < 0.5"
+    pivot: "2+ dimensions < 0.8"
+    refine: "1+ dimensions < 1.0 but fewer than 2 below 0.8"
 
 # --- 7. Stack + Deploy ---
-# Per-service values (runtime, hosting, ui, testing) live under services[].
-# Shared values (database, auth, analytics, payment) live directly under stack.
-# Each value maps to a stack file at .claude/stacks/<category>/<value>.md
 stack:
   services:
     - name: app
-      runtime: nextjs          # Web framework — leave default
-      hosting: vercel           # Where the app is deployed — leave default
-      ui: shadcn               # UI component library — leave default
-      testing: playwright      # Page-load smoke tests — created by bootstrap
-  database: supabase           # Database and backend — leave default
-  auth: supabase               # Login/signup system — leave default
-  # auth_providers:            # OAuth providers (e.g., [google, github]). Omit for email-only auth.
-  #   - google
-  #   - github
-  analytics: posthog           # Usage tracking — leave default
-  # payment: stripe            # Uncomment if your experiment involves payments
-  # email: resend              # Uncomment for welcome email + activation nudge
+      runtime: nextjs
+      hosting: vercel
+      ui: shadcn
+      testing: playwright
+  database: supabase
+  # auth: supabase             # No auth in MVP — open browse + upload
+  analytics: posthog
+  # payment: stripe            # Payment in Level 3
+
+# --- Target Geography ---
+target_geo: [US, GB, DE, FR, IT, JP]   # Fashion/textile markets
 
 deploy:
   url: null
   repo: null
-  domain: null               # Parent domain for hosting + email. Default: draftlabs.org
+  domain: null

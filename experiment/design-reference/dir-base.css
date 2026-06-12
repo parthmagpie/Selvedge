@@ -1,0 +1,60 @@
+/* ============================================================
+   DIRECTIONS — shared base for the 3 design explorations
+   (self-contained; does NOT load the main site CSS)
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;0,6..96,600;0,6..96,700;0,6..96,800;1,6..96,400;1,6..96,500;1,6..96,600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Hanken+Grotesk:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900&display=swap');
+
+* { box-sizing: border-box; }
+html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+body { margin: 0; overflow-x: hidden; }
+img { max-width: 100%; display: block; }
+a { text-decoration: none; color: inherit; }
+button { font-family: inherit; cursor: pointer; }
+
+/* fabric texture overlays (needed by FabricSwatch) */
+.fabric-grain {
+  position: absolute; inset: 0; pointer-events: none; mix-blend-mode: overlay; opacity: .5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+}
+.fabric-sheen {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg, rgba(255,255,255,.16) 0%, transparent 22%, transparent 70%, rgba(0,0,0,.10) 100%);
+}
+
+/* reveal */
+.reveal { opacity: 0; transform: translateY(22px); transition: opacity .8s ease, transform .8s cubic-bezier(.2,.7,.3,1); }
+.reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; } }
+
+/* ---------- Direction switcher bar ---------- */
+.dir-switch {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  height: 54px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 18px; background: #14110D; color: #EFEAE0;
+  font-family: 'Hanken Grotesk', system-ui, sans-serif;
+  box-shadow: 0 1px 0 rgba(255,255,255,.06), 0 8px 24px rgba(0,0,0,.18);
+}
+.dir-switch-l { display: flex; align-items: center; gap: 12px; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: rgba(239,234,224,.55); }
+.dir-switch-l b { color: #EFEAE0; font-weight: 600; letter-spacing: .02em; }
+.dir-switch-l .ds-mark { font-family: 'Bodoni Moda', serif; font-size: 17px; letter-spacing: 0; text-transform: none; color: #EFEAE0; }
+.dir-tabs { display: flex; gap: 4px; background: rgba(239,234,224,.08); border-radius: 100px; padding: 4px; }
+.dir-tabs button {
+  border: none; background: transparent; color: rgba(239,234,224,.65);
+  font-size: 13px; font-weight: 600; letter-spacing: .02em; padding: 8px 18px; border-radius: 100px;
+  transition: all .25s; display: inline-flex; align-items: center; gap: 8px;
+}
+.dir-tabs button .dt-no { font-family: 'Space Mono', monospace; font-size: 10.5px; opacity: .6; }
+.dir-tabs button.on { background: #EFEAE0; color: #14110D; }
+.dir-tabs button.on .dt-no { opacity: .5; }
+.dir-tabs button:not(.on):hover { color: #EFEAE0; }
+.dir-note { font-size: 11.5px; color: rgba(239,234,224,.4); font-family: 'Space Mono', monospace; }
+
+.dir-stage { padding-top: 54px; }
+
+@media (max-width: 760px) {
+  .dir-note { display: none; }
+  .dir-tabs button { padding: 8px 12px; font-size: 12px; }
+  .dir-tabs button .dt-label { display: none; }
+  .dir-tabs button .dt-no { font-size: 12px; opacity: 1; }
+  .dir-tabs button.on .dt-label { display: inline; }
+}

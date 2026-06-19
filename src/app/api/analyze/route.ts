@@ -10,7 +10,15 @@ const client = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   : null;
 
-const ANALYSIS_PROMPT = `You are an expert textile analyst. Analyze this fabric image and extract the following properties:
+const ANALYSIS_PROMPT = `You are an expert textile analyst. First, determine if this image shows fabric/textile material.
+
+IMPORTANT: If the image does NOT show fabric, textile, or cloth material (e.g., it's a photo of a person, animal, food, landscape, object, etc.), respond with:
+{
+  "is_fabric": false,
+  "rejection_reason": "This image does not appear to show fabric or textile material."
+}
+
+If the image DOES show fabric/textile, analyze it and extract the following properties:
 
 1. **Material**: Primary fiber type (e.g., Cotton, Linen, Wool, Silk, Polyester, Blend)
 2. **Texture**: Surface feel (e.g., Smooth, Nubby, Soft, Crisp, Plush)
@@ -20,10 +28,11 @@ const ANALYSIS_PROMPT = `You are an expert textile analyst. Analyze this fabric 
 6. **Weight**: Fabric weight category (e.g., Lightweight, Medium, Heavyweight)
 7. **Width Estimate**: Typical bolt width in inches (45, 54, 60, or 108)
 8. **Suggested Title**: A compelling 3-5 word title for marketplace listing
-9. **Confidence**: Your confidence in the analysis (0.0 to 1.0)
+9. **Confidence**: Your confidence in the analysis (0.0 to 1.0) - use lower values (< 0.5) if unsure
 
 Respond in JSON format only:
 {
+  "is_fabric": true,
   "material": "string",
   "texture": "string",
   "weave": "string",
@@ -36,16 +45,21 @@ Respond in JSON format only:
 }`;
 
 interface AnalysisResult {
-  material: string;
-  texture: string;
-  weave: string;
-  color_family: string;
-  primary_color: string;
-  weight: string;
-  width_inches: number;
-  suggested_title: string;
-  confidence: number;
+  is_fabric: boolean;
+  rejection_reason?: string;
+  material?: string;
+  texture?: string;
+  weave?: string;
+  color_family?: string;
+  primary_color?: string;
+  weight?: string;
+  width_inches?: number;
+  suggested_title?: string;
+  confidence?: number;
 }
+
+// Minimum confidence threshold for accepting fabric analysis
+const MIN_CONFIDENCE_THRESHOLD = 0.4;
 
 export async function POST(request: NextRequest) {
   // Env var guard
@@ -113,9 +127,44 @@ export async function POST(request: NextRequest) {
 
     const analysis: AnalysisResult = JSON.parse(jsonMatch[0]);
 
+    // Check if the image is actually fabric
+    if (!analysis.is_fabric) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "not_fabric",
+          message: analysis.rejection_reason || "This image does not appear to show fabric or textile material. Please upload an image of fabric.",
+        },
+        { status: 422 }
+      );
+    }
+
+    // Check confidence threshold
+    if (analysis.confidence !== undefined && analysis.confidence < MIN_CONFIDENCE_THRESHOLD) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "low_confidence",
+          message: "We couldn't confidently identify this as fabric. Please upload a clearer image of the fabric.",
+          confidence: analysis.confidence,
+        },
+        { status: 422 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      analysis,
+      analysis: {
+        material: analysis.material,
+        texture: analysis.texture,
+        weave: analysis.weave,
+        color_family: analysis.color_family,
+        primary_color: analysis.primary_color,
+        weight: analysis.weight,
+        width_inches: analysis.width_inches,
+        suggested_title: analysis.suggested_title,
+        confidence: analysis.confidence,
+      },
       model: "claude-sonnet-4-20250514",
     });
   } catch (error) {

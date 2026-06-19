@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { trackViewListing, trackAddToCart } from "@/lib/events";
+import { useCart } from "@/lib/cart-context";
 import type { FabricRow, FactoryRow } from "@/lib/types";
 import {
   ArrowLeft,
@@ -189,6 +190,7 @@ function handleRadioGroupKey<T extends string | number>(
 export default function ListingDetailPage() {
   const params = useParams();
   const id = params?.id as string | undefined;
+  const { addToCart } = useCart();
 
   // State
   const [fabric, setFabric] = useState<(FabricRow & { factory: FactoryRow }) | null>(null);
@@ -246,6 +248,17 @@ export default function ListingDetailPage() {
 
   const handleAddToCart = useCallback(() => {
     if (!fabric) return;
+    // Add to cart context
+    addToCart({
+      id: fabric.id,
+      title: fabric.title,
+      material: fabric.material,
+      pricePerYard: fabric.price_per_yard,
+      yards,
+      imageUrl: fabric.image_url,
+      factoryName: fabric.factory.name,
+    });
+    // Track analytics
     trackAddToCart({
       listing_id: fabric.id,
       yards,
@@ -253,7 +266,7 @@ export default function ListingDetailPage() {
     });
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
-  }, [fabric, yards]);
+  }, [fabric, yards, addToCart]);
 
   const handleToggleFavorite = useCallback(() => {
     if (!fabric) return;

@@ -12,6 +12,8 @@ export const EVENT_FUNNEL_MAP: Record<string, string> = {
   add_to_cart: "activate",
   upload_started: "activate",
   listing_published: "activate",
+  view_cart: "activate",
+  checkout_started: "activate",
 } as const;
 
 // --- Event wrappers (generated from experiment/EVENTS.yaml events map) ---
@@ -50,4 +52,12 @@ export function trackUploadStarted(props: { source: string }) {
 
 export function trackListingPublished(props: { material: string; color: string; yards: number; price: number; ai_confidence: number }) {
   track("listing_published", { ...props, funnel_stage: "activate" });
+}
+
+export function trackViewCart(props: { item_count: number; total_value: number }) {
+  track("view_cart", { ...props, funnel_stage: "activate" });
+}
+
+export function trackCheckoutStarted(props: { item_count: number; total_value: number }) {
+  track("checkout_started", { ...props, funnel_stage: "activate" });
 }

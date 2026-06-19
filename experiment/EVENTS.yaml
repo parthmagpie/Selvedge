@@ -124,3 +124,29 @@ events:
         type: number
         required: true
         description: AI confidence percentage
+
+  view_cart:
+    funnel_stage: activate
+    trigger: User views the cart page
+    properties:
+      item_count:
+        type: number
+        required: true
+        description: Number of items in cart
+      total_value:
+        type: number
+        required: true
+        description: Total cart value in dollars
+
+  checkout_started:
+    funnel_stage: activate
+    trigger: User clicks checkout button
+    properties:
+      item_count:
+        type: number
+        required: true
+        description: Number of items being checked out
+      total_value:
+        type: number
+        required: true
+        description: Total order value in dollars

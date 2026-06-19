@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { trackUploadStarted, trackListingPublished } from "@/lib/events";
 
 // --- Types ---
-type UploadState = "idle" | "analyzing" | "review" | "published";
+type UploadState = "idle" | "analyzing" | "review" | "published" | "error";
 
 interface AnalysisPhase {
   id: number;
@@ -384,18 +384,75 @@ export default function UploadPage() {
   );
   const [progress, setProgress] = useState(0);
   const [listing, setListing] = useState<ListingData | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [currentFile, setCurrentFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Start analysis animation (plain function - stable)
-  const startAnalysis = (imageUrl: string) => {
+  // Start analysis with real API call
+  const startAnalysis = async (imageUrl: string, file: File | null) => {
     setState("analyzing");
     setProgress(0);
+    setErrorMessage("");
     setPhases(ANALYSIS_PHASES.map((p) => ({ ...p, complete: false })));
 
-    // Simulate analysis progress
-    const phaseDelay = 880; // 4.4s total / 5 phases
+    // Animate progress phases while API call runs
+    const phaseDelay = 880;
     let currentPhase = 0;
+    let analysisComplete = false;
+    let analysisResult: ListingData | null = null;
+    let analysisError: string | null = null;
 
+    // Start API call (or mock for sample images)
+    const apiPromise = (async () => {
+      try {
+        if (file) {
+          // Real API call for uploaded files
+          const formData = new FormData();
+          formData.append("image", file);
+
+          const response = await fetch("/api/analyze", {
+            method: "POST",
+            body: formData,
+          });
+
+          const data = await response.json();
+
+          if (!response.ok || !data.success) {
+            // Handle non-fabric or low confidence rejection
+            if (data.error === "not_fabric") {
+              throw new Error(data.message || "This image does not appear to show fabric. Please upload an image of fabric or textile material.");
+            } else if (data.error === "low_confidence") {
+              throw new Error(data.message || "We couldn't confidently identify this as fabric. Please upload a clearer image.");
+            } else {
+              throw new Error(data.message || data.error || "Analysis failed. Please try again.");
+            }
+          }
+
+          const analysis = data.analysis;
+          analysisResult = {
+            title: analysis.suggested_title || "Untitled Fabric",
+            material: analysis.material || "Unknown",
+            texture: analysis.weave || analysis.texture || "Unknown weave",
+            color: analysis.primary_color || analysis.color_family || "Unknown",
+            yardage: Math.floor(Math.random() * 40) + 12, // User will edit this
+            width: analysis.width_inches || 54,
+            weight: 200, // Default, user will edit
+            price: Math.floor(Math.random() * 30) + 15, // Suggested price
+            confidence: Math.round((analysis.confidence || 0.8) * 100),
+            imageUrl,
+          };
+        } else {
+          // Mock analysis for sample images (demo mode)
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          analysisResult = generateMockAnalysis(imageUrl);
+        }
+      } catch (error) {
+        analysisError = error instanceof Error ? error.message : "Analysis failed. Please try again.";
+      }
+      analysisComplete = true;
+    })();
+
+    // Animate phases
     const interval = setInterval(() => {
       currentPhase++;
       setProgress((currentPhase / ANALYSIS_PHASES.length) * 100);
@@ -408,29 +465,53 @@ export default function UploadPage() {
 
       if (currentPhase >= ANALYSIS_PHASES.length) {
         clearInterval(interval);
-        // Generate mock analysis and move to review
-        setTimeout(() => {
-          const analysis = generateMockAnalysis(imageUrl);
-          setListing(analysis);
-          setState("review");
-        }, 500);
       }
     }, phaseDelay);
+
+    // Wait for API to complete
+    await apiPromise;
+    clearInterval(interval);
+
+    // Complete all phases visually
+    setProgress(100);
+    setPhases(ANALYSIS_PHASES.map((p) => ({ ...p, complete: true })));
+
+    // Short delay before showing result
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    if (analysisError) {
+      setErrorMessage(analysisError);
+      setState("error");
+    } else if (analysisResult) {
+      setListing(analysisResult);
+      setState("review");
+    }
   };
 
   // Handle file selection (plain function)
   const handleFileSelect = (file: File) => {
     const imageUrl = URL.createObjectURL(file);
     setSelectedImage(imageUrl);
+    setCurrentFile(file);
     trackUploadStarted({ source: "file_upload" });
-    startAnalysis(imageUrl);
+    startAnalysis(imageUrl, file);
   };
 
   // Handle sample selection (plain function)
   const handleSampleSelect = (sample: (typeof SAMPLE_FABRICS)[0]) => {
     setSelectedImage(sample.preview);
+    setCurrentFile(null); // No file for samples, use mock
     trackUploadStarted({ source: "sample_selection" });
-    startAnalysis(sample.preview);
+    startAnalysis(sample.preview, null);
+  };
+
+  // Handle retry after error
+  const handleRetry = () => {
+    setState("idle");
+    setSelectedImage("");
+    setCurrentFile(null);
+    setErrorMessage("");
+    setListing(null);
   };
 
   // Handle drag events (plain function)
@@ -734,6 +815,64 @@ export default function UploadPage() {
         {state === "published" && listing && (
           <div className="max-w-2xl mx-auto">
             <PublishedState listing={listing} onListAnother={handleListAnother} />
+          </div>
+        )}
+
+        {/* Error state */}
+        {state === "error" && (
+          <div className="max-w-2xl mx-auto">
+            <Card className="overflow-hidden border-clay/30 bg-clay/5">
+              <CardContent className="p-8 text-center">
+                <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-clay/10 flex items-center justify-center">
+                  <svg
+                    className="w-8 h-8 text-clay"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-bold text-ink mb-4">
+                  Unable to analyze image
+                </h2>
+                <p className="text-soft mb-8 max-w-md mx-auto">
+                  {errorMessage || "This image could not be processed. Please try uploading a clear photo of fabric."}
+                </p>
+                {selectedImage && (
+                  <div className="mb-6">
+                    <img
+                      src={selectedImage}
+                      alt="Uploaded image"
+                      className="w-32 h-32 object-cover rounded-lg mx-auto opacity-50"
+                    />
+                  </div>
+                )}
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <Button
+                    onClick={handleRetry}
+                    className="btn-selvedge btn-primary-clay"
+                  >
+                    Try another image
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="btn-selvedge btn-secondary-outline"
+                    onClick={() => {
+                      // Show tips
+                      alert("Tips for good fabric photos:\n\n• Use natural lighting\n• Show the fabric flat, not folded\n• Include texture details\n• Avoid blurry or dark images\n• Make sure fabric fills most of the frame");
+                    }}
+                  >
+                    Photo tips
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>

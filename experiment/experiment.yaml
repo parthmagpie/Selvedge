@@ -188,7 +188,7 @@ stack:
       ui: shadcn
       testing: playwright
   database: supabase
-  # auth: supabase             # No auth in MVP — open browse + upload
+  auth: supabase
   analytics: posthog
   # payment: stripe            # Payment in Level 3
 

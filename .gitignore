@@ -72,3 +72,4 @@ yarn.lock
 .codex/
 .agents/
 AGENTS.md
+.vercel

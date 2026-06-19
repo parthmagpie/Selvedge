@@ -5,6 +5,7 @@ import Script from "next/script";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NavBar } from "@/components/nav-bar";
 import { CartProvider } from "@/lib/cart-context";
+import { AuthProvider } from "@/lib/auth-context";
 
 const archivo = Archivo({
   subsets: ["latin"],
@@ -94,14 +95,16 @@ export default function RootLayout({
         >
           Skip to main content
         </a>
-        <CartProvider>
-          <TooltipProvider>
-            <NavBar />
-            <main id="main-content" tabIndex={-1}>
-              {children}
-            </main>
-          </TooltipProvider>
-        </CartProvider>
+        <AuthProvider>
+          <CartProvider>
+            <TooltipProvider>
+              <NavBar />
+              <main id="main-content" tabIndex={-1}>
+                {children}
+              </main>
+            </TooltipProvider>
+          </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   );

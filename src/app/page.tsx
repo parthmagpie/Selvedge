@@ -226,7 +226,7 @@ export default function LandingPage() {
                   onClick={() => trackCtaClick({ cta_type: "list_inventory" })}
                   className={cn(
                     buttonVariants({ variant: "outline" }),
-                    "btn-selvedge border-bone-text-muted text-bone hover:text-clay hover:border-clay"
+                    "btn-selvedge border-2 border-bone text-bone hover:bg-bone hover:text-field"
                   )}
                 >
                   LIST YOUR INVENTORY
@@ -639,7 +639,7 @@ export default function LandingPage() {
                 onClick={() => trackCtaClick({ cta_type: "list_inventory" })}
                 className={cn(
                   buttonVariants({ variant: "outline" }),
-                  "btn-selvedge border-bone-text-muted text-bone hover:text-clay hover:border-clay"
+                  "btn-selvedge border-2 border-bone text-bone hover:bg-bone hover:text-field"
                 )}
               >
                 LIST YOUR INVENTORY
@@ -658,14 +658,14 @@ export default function LandingPage() {
             <div className="flex items-center gap-2">
               <span className="text-bone font-bold text-lg tracking-wide">SELVEDGE</span>
             </div>
-            <div className="text-bone-text-faint text-sm">
+            <div className="text-bone/80 text-sm">
               Premium deadstock, by the yard.
             </div>
-            <div className="flex items-center gap-6 text-bone-text-muted text-sm">
-              <Link href="/browse" className="hover:text-bone transition-colors">
+            <div className="flex items-center gap-6 text-bone text-sm">
+              <Link href="/browse" className="hover:text-gold transition-colors">
                 Browse
               </Link>
-              <Link href="/upload" className="hover:text-bone transition-colors">
+              <Link href="/upload" className="hover:text-gold transition-colors">
                 Sell
               </Link>
             </div>

@@ -226,7 +226,7 @@ export default function LandingPage() {
                   onClick={() => trackCtaClick({ cta_type: "list_inventory" })}
                   className={cn(
                     buttonVariants({ variant: "outline" }),
-                    "btn-selvedge border-2 border-bone text-bone hover:bg-bone hover:text-field"
+                    "btn-selvedge btn-outline-on-dark"
                   )}
                 >
                   LIST YOUR INVENTORY
@@ -639,7 +639,7 @@ export default function LandingPage() {
                 onClick={() => trackCtaClick({ cta_type: "list_inventory" })}
                 className={cn(
                   buttonVariants({ variant: "outline" }),
-                  "btn-selvedge border-2 border-bone text-bone hover:bg-bone hover:text-field"
+                  "btn-selvedge btn-outline-on-dark"
                 )}
               >
                 LIST YOUR INVENTORY

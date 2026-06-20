@@ -506,6 +506,19 @@
         transform: translateY(-3px);
         box-shadow: var(--shadow-md);
     }
+
+    /* Outline button for dark backgrounds */
+    .btn-outline-on-dark {
+        background: transparent !important;
+        color: var(--bone);
+        border: 2px solid var(--bone) !important;
+    }
+
+    .btn-outline-on-dark:hover {
+        background: var(--bone) !important;
+        color: var(--field);
+        transform: translateY(-3px);
+    }
 }
 
 /* ============================================================

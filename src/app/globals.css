@@ -338,6 +338,18 @@
         color: var(--bone-text-muted);
     }
 
+    .text-bone-text {
+        color: var(--bone-text);
+    }
+
+    .text-bone-text-muted {
+        color: var(--bone-text-muted);
+    }
+
+    .text-bone-text-faint {
+        color: var(--bone-text-faint);
+    }
+
     /* Brand colors */
     .text-clay {
         color: var(--clay);

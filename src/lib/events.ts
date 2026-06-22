@@ -16,6 +16,7 @@ export const EVENT_FUNNEL_MAP: Record<string, string> = {
   checkout_started: "activate",
   signup_completed: "activate",
   login_completed: "activate",
+  feedback_submitted: "activate",
 } as const;
 
 // --- Event wrappers (generated from experiment/EVENTS.yaml events map) ---
@@ -71,4 +72,8 @@ export function trackSignupCompleted(props: { method: string }, userId: string, 
 
 export function trackLoginCompleted(props: { method: string }) {
   track("login_completed", { ...props, funnel_stage: "activate" });
+}
+
+export function trackFeedbackSubmitted(props: { activation_action: string; source?: string; feedback?: string }) {
+  track("feedback_submitted", { ...props, funnel_stage: "activate" });
 }

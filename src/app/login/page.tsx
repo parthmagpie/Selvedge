@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase";
-import { track } from "@/lib/analytics";
+import { trackLoginCompleted } from "@/lib/events";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -35,7 +35,7 @@ export default function LoginPage() {
         return;
       }
 
-      track("login_completed", { method: "email" });
+      trackLoginCompleted({ method: "email" });
       router.push("/");
       router.refresh();
     } catch {

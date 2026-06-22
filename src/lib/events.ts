@@ -1,4 +1,4 @@
-import { track } from "./analytics";
+import { track, identify } from "./analytics";
 
 // --- Event funnel stage map (generated from experiment/EVENTS.yaml) ---
 
@@ -14,6 +14,8 @@ export const EVENT_FUNNEL_MAP: Record<string, string> = {
   listing_published: "activate",
   view_cart: "activate",
   checkout_started: "activate",
+  signup_completed: "activate",
+  login_completed: "activate",
 } as const;
 
 // --- Event wrappers (generated from experiment/EVENTS.yaml events map) ---
@@ -60,4 +62,13 @@ export function trackViewCart(props: { item_count: number; total_value: number }
 
 export function trackCheckoutStarted(props: { item_count: number; total_value: number }) {
   track("checkout_started", { ...props, funnel_stage: "activate" });
+}
+
+export function trackSignupCompleted(props: { method: string }, userId: string, userEmail?: string) {
+  identify(userId, { email: userEmail });
+  track("signup_completed", { ...props, funnel_stage: "activate" });
+}
+
+export function trackLoginCompleted(props: { method: string }) {
+  track("login_completed", { ...props, funnel_stage: "activate" });
 }

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase";
-import { track } from "@/lib/analytics";
+import { trackSignupCompleted } from "@/lib/events";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -37,7 +37,7 @@ export default function SignupPage() {
 
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -51,7 +51,10 @@ export default function SignupPage() {
         return;
       }
 
-      track("signup_completed", { method: "email" });
+      // Track signup with identify() to link anonymous visitor to user
+      if (data.user) {
+        trackSignupCompleted({ method: "email" }, data.user.id, data.user.email);
+      }
       setSuccess(true);
     } catch {
       setError("An unexpected error occurred. Please try again.");

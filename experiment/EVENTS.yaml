@@ -150,3 +150,22 @@ events:
         type: number
         required: true
         description: Total order value in dollars
+
+  # --- Auth Events ---
+  signup_completed:
+    funnel_stage: activate
+    trigger: User successfully creates an account
+    properties:
+      method:
+        type: string
+        required: true
+        description: Signup method (email, google, etc.)
+
+  login_completed:
+    funnel_stage: activate
+    trigger: User successfully logs in
+    properties:
+      method:
+        type: string
+        required: true
+        description: Login method (email, google, etc.)

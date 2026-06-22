@@ -169,3 +169,20 @@ events:
         type: string
         required: true
         description: Login method (email, google, etc.)
+
+  feedback_submitted:
+    funnel_stage: activate
+    trigger: User submits post-activation feedback widget
+    properties:
+      source:
+        type: string
+        required: false
+        description: How the user found the product (e.g., google, friend, social)
+      feedback:
+        type: string
+        required: false
+        description: Free-text feedback from the user
+      activation_action:
+        type: string
+        required: true
+        description: What activation action preceded this (from experiment.yaml thesis)

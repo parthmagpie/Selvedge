@@ -573,25 +573,6 @@ export default function UploadPage() {
 
   return (
     <div className="min-h-screen bg-bone">
-      {/* Header */}
-      <header className="bg-field py-4 border-b-2 border-clay">
-        <div className="wrap">
-          <nav className="flex items-center justify-between" aria-label="Upload page navigation">
-            <Link href="/" className="text-bone font-bold text-xl tracking-tight">
-              SELVEDGE
-            </Link>
-            <div className="flex items-center gap-4">
-              <span className="eyebrow eyebrow-gold">Factory Portal</span>
-              <Link href="/browse">
-                <Button variant="ghost" className="text-bone hover:text-gold hover:bg-transparent">
-                  Browse fabrics
-                </Button>
-              </Link>
-            </div>
-          </nav>
-        </div>
-      </header>
-
       <div className="wrap section-spacing">
         {/* Page title - always visible */}
         {state === "idle" && (

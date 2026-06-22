@@ -7,7 +7,7 @@
 name: selvedge
 owner: parth
 type: web-app
-level: 2                       # Prototype: landing + functional marketplace + upload flow
+level: 3                       # Full product: landing + functional marketplace + upload flow + auth
 status: draft
 
 # --- 2. Intent ---

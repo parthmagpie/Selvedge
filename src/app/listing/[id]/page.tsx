@@ -2,13 +2,14 @@
 
 import { useEffect, useState, useCallback, KeyboardEvent } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { trackViewListing, trackAddToCart } from "@/lib/events";
 import { useCart } from "@/lib/cart-context";
+import { useAuth } from "@/lib/auth-context";
 import type { FabricRow, FactoryRow } from "@/lib/types";
 import {
   ArrowLeft,
@@ -313,8 +314,10 @@ function handleRadioGroupKey<T extends string | number>(
 
 export default function ListingDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params?.id as string | undefined;
   const { addToCart } = useCart();
+  const { user, loading: authLoading } = useAuth();
 
   // State
   const [fabric, setFabric] = useState<(FabricRow & { factory: FactoryRow }) | null>(null);
@@ -372,6 +375,13 @@ export default function ListingDetailPage() {
 
   const handleAddToCart = useCallback(() => {
     if (!fabric) return;
+
+    // Redirect to login if not logged in
+    if (!user) {
+      router.push(`/login?redirect=/listing/${fabric.id}`);
+      return;
+    }
+
     // Add to cart context
     addToCart({
       id: fabric.id,
@@ -390,7 +400,7 @@ export default function ListingDetailPage() {
     });
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
-  }, [fabric, yards, addToCart]);
+  }, [fabric, yards, addToCart, user, router]);
 
   const handleToggleFavorite = useCallback(() => {
     if (!fabric) return;
@@ -575,6 +585,8 @@ export default function ListingDetailPage() {
               yards={yards}
               totalPrice={totalPrice}
               addedToCart={addedToCart}
+              isLoggedIn={!!user}
+              authLoading={authLoading}
               onYardsChange={handleYardsChange}
               onAddToCart={handleAddToCart}
             />
@@ -791,6 +803,8 @@ function PurchasePanel({
   yards,
   totalPrice,
   addedToCart,
+  isLoggedIn,
+  authLoading,
   onYardsChange,
   onAddToCart,
 }: {
@@ -799,6 +813,8 @@ function PurchasePanel({
   yards: number;
   totalPrice: string;
   addedToCart: boolean;
+  isLoggedIn: boolean;
+  authLoading: boolean;
   onYardsChange: (delta: number) => void;
   onAddToCart: () => void;
 }) {
@@ -879,7 +895,7 @@ function PurchasePanel({
 
         <Button
           onClick={onAddToCart}
-          disabled={addedToCart}
+          disabled={addedToCart || authLoading}
           className={`
             w-full h-14 text-base font-bold uppercase tracking-wider transition-all
             ${
@@ -889,10 +905,20 @@ function PurchasePanel({
             }
           `}
         >
-          {addedToCart ? (
+          {authLoading ? (
+            <>
+              <div className="w-5 h-5 border-2 border-bone border-t-transparent rounded-full animate-spin mr-2" />
+              Loading...
+            </>
+          ) : addedToCart ? (
             <>
               <Check className="h-5 w-5 mr-2" />
               Added to Order
+            </>
+          ) : !isLoggedIn ? (
+            <>
+              <ShoppingBag className="h-5 w-5 mr-2" />
+              Sign in to Purchase
             </>
           ) : (
             <>

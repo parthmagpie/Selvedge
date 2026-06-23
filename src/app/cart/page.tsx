@@ -1,19 +1,38 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useCart } from "@/lib/cart-context";
 import { track } from "@/lib/analytics";
+import { createClient } from "@/lib/supabase";
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function CartPage() {
   const { items, removeFromCart, updateQuantity, totalPrice, clearCart } = useCart();
   const hasTrackedRef = useRef(false);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const router = useRouter();
+
+  // Check auth status and redirect if not logged in
+  useEffect(() => {
+    const checkAuth = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push("/login?redirect=/cart");
+        return;
+      }
+      setIsLoggedIn(true);
+    };
+    checkAuth();
+  }, [router]);
 
   // Track view_cart on mount
   useEffect(() => {
@@ -22,6 +41,15 @@ export default function CartPage() {
       hasTrackedRef.current = true;
     }
   }, []);
+
+  // Show loading while checking auth
+  if (isLoggedIn === null) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-soft">Loading...</div>
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
@@ -178,19 +206,38 @@ export default function CartPage() {
 
                 <Button
                   className="w-full h-12 text-base font-bold uppercase tracking-wider bg-clay hover:bg-clay-deep text-bone"
-                  onClick={() => {
+                  disabled={isCheckingOut}
+                  onClick={async () => {
+                    setIsCheckingOut(true);
                     track("checkout_started", {
                       item_count: items.length,
                       total_value: totalPrice,
                     });
-                    // For MVP, show a message that checkout is coming soon
-                    alert("Checkout coming soon! Your cart has been saved.");
+
+                    try {
+                      const response = await fetch("/api/checkout", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ items }),
+                      });
+
+                      const data = await response.json();
+
+                      if (data.url) {
+                        window.location.href = data.url;
+                      } else {
+                        alert(data.error || "Checkout failed. Please try again.");
+                        setIsCheckingOut(false);
+                      }
+                    } catch (error) {
+                      alert("Checkout failed. Please try again.");
+                      setIsCheckingOut(false);
+                    }
                   }}
                 >
-                  Proceed to Checkout
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  {isCheckingOut ? "Redirecting..." : "Proceed to Checkout"}
+                  {!isCheckingOut && <ArrowRight className="ml-2 h-4 w-4" />}
                 </Button>
-
                 <p className="text-xs text-soft text-center mt-4">
                   Secure checkout with Stripe
                 </p>

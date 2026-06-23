@@ -190,7 +190,7 @@ stack:
   database: supabase
   auth: supabase
   analytics: posthog
-  # payment: stripe            # Payment in Level 3
+  payment: stripe
 
 # --- Target Geography ---
 target_geo: [US, GB, DE, FR, IT, JP]   # Fashion/textile markets

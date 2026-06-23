@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 
-// Env var guard - return 503 if not configured
-if (!process.env.ANTHROPIC_API_KEY) {
-  console.warn("ANTHROPIC_API_KEY not configured - AI analysis will return 503");
-}
+// Initialize Gemini (primary)
+const genAI = process.env.GEMINI_API_KEY
+  ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+  : null;
 
-const client = process.env.ANTHROPIC_API_KEY
-  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+// Initialize Grok/xAI (fallback) - uses OpenAI-compatible API
+const grokClient = process.env.GROK_API_KEY
+  ? new OpenAI({
+      apiKey: process.env.GROK_API_KEY,
+      baseURL: "https://api.x.ai/v1",
+    })
   : null;
 
 const ANALYSIS_PROMPT = `You are an expert textile analyst. First, determine if this image shows fabric/textile material.
@@ -61,11 +66,63 @@ interface AnalysisResult {
 // Minimum confidence threshold for accepting fabric analysis
 const MIN_CONFIDENCE_THRESHOLD = 0.4;
 
+// Analyze with Gemini
+async function analyzeWithGemini(base64: string, mimeType: string): Promise<{ text: string; model: string }> {
+  if (!genAI) throw new Error("Gemini not configured");
+
+  // Use gemini-2.5-flash for vision tasks (supports image input)
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const result = await model.generateContent([
+    {
+      inlineData: {
+        mimeType,
+        data: base64,
+      },
+    },
+    { text: ANALYSIS_PROMPT },
+  ]);
+
+  const response = await result.response;
+  return { text: response.text(), model: "gemini-2.5-flash" };
+}
+
+// Analyze with Grok (fallback)
+async function analyzeWithGrok(base64: string, mimeType: string): Promise<{ text: string; model: string }> {
+  if (!grokClient) throw new Error("Grok not configured");
+
+  const response = await grokClient.chat.completions.create({
+    model: "grok-4.3",
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "image_url",
+            image_url: {
+              url: `data:${mimeType};base64,${base64}`,
+            },
+          },
+          {
+            type: "text",
+            text: ANALYSIS_PROMPT,
+          },
+        ],
+      },
+    ],
+    max_tokens: 1024,
+  });
+
+  return {
+    text: response.choices[0]?.message?.content || "",
+    model: "grok-4.3"
+  };
+}
+
 export async function POST(request: NextRequest) {
-  // Env var guard
-  if (!client) {
+  // Check if at least one API is configured
+  if (!genAI && !grokClient) {
     return NextResponse.json(
-      { error: "Anthropic API not configured" },
+      { error: "No AI API configured (need GEMINI_API_KEY or GROK_API_KEY)" },
       { status: 503 }
     );
   }
@@ -84,37 +141,31 @@ export async function POST(request: NextRequest) {
     // Convert image to base64
     const bytes = await image.arrayBuffer();
     const base64 = Buffer.from(bytes).toString("base64");
-    const mediaType = image.type as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+    const mimeType = image.type;
 
-    // Call Claude Vision API
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1024,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: mediaType,
-                data: base64,
-              },
-            },
-            {
-              type: "text",
-              text: ANALYSIS_PROMPT,
-            },
-          ],
-        },
-      ],
-    });
+    // Try Gemini first, fall back to Grok
+    let responseText: string;
+    let modelUsed: string;
 
-    // Extract JSON from response
-    const responseText = message.content[0].type === "text"
-      ? message.content[0].text
-      : "";
+    try {
+      if (genAI) {
+        const result = await analyzeWithGemini(base64, mimeType);
+        responseText = result.text;
+        modelUsed = result.model;
+      } else {
+        throw new Error("Gemini not available, using fallback");
+      }
+    } catch (geminiError) {
+      console.warn("Gemini failed, trying Grok fallback:", geminiError);
+
+      if (grokClient) {
+        const result = await analyzeWithGrok(base64, mimeType);
+        responseText = result.text;
+        modelUsed = result.model;
+      } else {
+        throw geminiError; // No fallback available
+      }
+    }
 
     // Parse JSON from response (may be wrapped in markdown code blocks)
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
@@ -165,7 +216,7 @@ export async function POST(request: NextRequest) {
         suggested_title: analysis.suggested_title,
         confidence: analysis.confidence,
       },
-      model: "claude-sonnet-4-20250514",
+      model: modelUsed,
     });
   } catch (error) {
     console.error("Analysis error:", error);

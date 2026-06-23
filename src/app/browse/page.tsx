@@ -630,13 +630,26 @@ export default function BrowsePage() {
   // UI state
   const [isLoading, setIsLoading] = useState(true);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const [dbListings, setDbListings] = useState<FabricListing[]>([]);
 
-  // Track browse_started on mount
+  // Fetch listings from database and track browse_started on mount
   useEffect(() => {
     trackBrowseStarted({ entry_point: "nav" });
-    // Simulate loading state
-    const timer = setTimeout(() => setIsLoading(false), 600);
-    return () => clearTimeout(timer);
+
+    const fetchListings = async () => {
+      try {
+        const response = await fetch("/api/listings");
+        if (response.ok) {
+          const data = await response.json();
+          setDbListings(data.listings || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch listings:", error);
+      }
+      setIsLoading(false);
+    };
+
+    fetchListings();
   }, []);
 
   // Load favorites from localStorage
@@ -740,9 +753,14 @@ export default function BrowsePage() {
     []
   );
 
+  // Combine mock fabrics with database listings
+  const allFabrics = useMemo(() => {
+    return [...dbListings, ...MOCK_FABRICS];
+  }, [dbListings]);
+
   // Filtered fabrics
   const filteredFabrics = useMemo(() => {
-    return MOCK_FABRICS.filter((fabric) => {
+    return allFabrics.filter((fabric) => {
       // Material filter
       if (
         selectedMaterials.length > 0 &&
@@ -770,16 +788,16 @@ export default function BrowsePage() {
       }
       return true;
     });
-  }, [selectedMaterials, selectedColors, priceRange, yardageRange]);
+  }, [allFabrics, selectedMaterials, selectedColors, priceRange, yardageRange]);
 
   // Material counts for filter badges
   const materialCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    MOCK_FABRICS.forEach((fabric) => {
+    allFabrics.forEach((fabric) => {
       counts[fabric.material] = (counts[fabric.material] || 0) + 1;
     });
     return counts;
-  }, []);
+  }, [allFabrics]);
 
   // Check if any filters are active
   const hasActiveFilters =

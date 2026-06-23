@@ -76,6 +76,17 @@ hypotheses:
     experiment_level: 2
     depends_on: [h-02]
     status: pending
+  - id: h-05
+    category: monetize
+    statement: ">5% of designers who add to cart will complete checkout"
+    metric:
+      formula: "purchase_completed / add_to_cart"
+      threshold: 0.05
+      operator: gte
+    priority_score: 70
+    experiment_level: 3
+    depends_on: [h-04]
+    status: pending
 
 # --- 3. Behaviors ---
 behaviors:

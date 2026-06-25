@@ -85,6 +85,19 @@ export default function RootLayout({
             } catch(e) {}
           `}
         </Script>
+        {/* Google Ads Tag */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=AW-18140583023"
+          strategy="afterInteractive"
+        />
+        <Script id="google-ads" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'AW-18140583023');
+          `}
+        </Script>
       </head>
       <body
         className={`${archivo.variable} ${bodoniModa.variable} ${spaceMono.variable} font-sans antialiased bg-bone text-ink`}

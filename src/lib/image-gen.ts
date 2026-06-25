@@ -9,7 +9,7 @@ import sharp from "sharp";
 const MAX_RETRIES = 2;
 const BASE_DELAY_MS = 2000;
 const PUBLIC_IMAGES_DIR = join(process.cwd(), "public", "images");
-const CANDIDATES_DIR = join(process.cwd(), ".runs", "image-candidates");
+const _CANDIDATES_DIR = join(process.cwd(), ".runs", "image-candidates");
 const MAX_DIMENSION = 1920; // Dimension cap per #957
 
 const FALLBACK_MODEL = "fal-ai/flux-2-pro";
@@ -186,7 +186,9 @@ function logFalError(
     error_body: errorBody.slice(0, 500),
     attempted_at: new Date().toISOString(),
   };
-  const fs = require("fs");
+  // Use sync import since this is a sync function
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const fs = require("fs") as typeof import("fs");
   fs.appendFileSync(errorsPath, JSON.stringify(entry) + "\n");
 }
 

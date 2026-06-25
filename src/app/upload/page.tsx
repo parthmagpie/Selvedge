@@ -389,8 +389,8 @@ export default function UploadPage() {
   const [progress, setProgress] = useState(0);
   const [listing, setListing] = useState<ListingData | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>("");
-  const [currentFile, setCurrentFile] = useState<File | null>(null);
-  const [uploadedImageUrl, setUploadedImageUrl] = useState<string>("");
+  const [_currentFile, setCurrentFile] = useState<File | null>(null);
+  const [_uploadedImageUrl, setUploadedImageUrl] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Redirect to login if not authenticated
@@ -427,7 +427,7 @@ export default function UploadPage() {
     // Animate progress phases while API call runs
     const phaseDelay = 880;
     let currentPhase = 0;
-    let analysisComplete = false;
+    let _analysisComplete = false;
     let analysisResult: ListingData | null = null;
     let analysisError: string | null = null;
     let persistedImageUrl = imageUrl; // Will be updated with Supabase Storage URL
@@ -498,7 +498,7 @@ export default function UploadPage() {
       } catch (error) {
         analysisError = error instanceof Error ? error.message : "Analysis failed. Please try again.";
       }
-      analysisComplete = true;
+      _analysisComplete = true;
     })();
 
     // Animate phases

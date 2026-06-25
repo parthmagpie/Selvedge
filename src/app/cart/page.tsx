@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -229,7 +228,7 @@ export default function CartPage() {
                         alert(data.error || "Checkout failed. Please try again.");
                         setIsCheckingOut(false);
                       }
-                    } catch (error) {
+                    } catch {
                       alert("Checkout failed. Please try again.");
                       setIsCheckingOut(false);
                     }

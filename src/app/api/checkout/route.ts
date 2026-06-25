@@ -23,20 +23,6 @@ export async function POST(request: Request) {
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-    // Create line items from cart
-    const line_items = items.map((item) => ({
-      price_data: {
-        currency: "usd",
-        product_data: {
-          name: item.title,
-          description: `${item.material} • ${item.yards} yards from ${item.factoryName}`,
-          images: item.imageUrl.startsWith("http") ? [item.imageUrl] : undefined,
-        },
-        unit_amount: Math.round(item.pricePerYard * 100), // Convert to cents
-      },
-      quantity: Math.round(item.yards * 2) / 2, // Stripe doesn't support decimals, but we can pass fractional yards as quantity
-    }));
-
     // For fractional yards, we need to calculate the total per item instead
     const adjustedLineItems = items.map((item) => ({
       price_data: {

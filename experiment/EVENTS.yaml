@@ -18,6 +18,31 @@ events:
   visit_landing:
     funnel_stage: reach
     trigger: User loads the landing page
+    properties:
+      utm_source:
+        type: string
+        required: false
+        description: UTM source parameter from URL
+      utm_medium:
+        type: string
+        required: false
+        description: UTM medium parameter from URL
+      utm_campaign:
+        type: string
+        required: false
+        description: UTM campaign parameter from URL
+      utm_content:
+        type: string
+        required: false
+        description: UTM content parameter (variant slug)
+      gclid:
+        type: string
+        required: false
+        description: Google Click ID for conversion attribution
+      click_id:
+        type: string
+        required: false
+        description: Generic click ID from ad platform
 
   # --- Demand Events ---
   cta_click:
@@ -150,6 +175,13 @@ events:
         type: number
         required: true
         description: Total order value in dollars
+
+  # --- Monetize Events ---
+  purchase_completed:
+    funnel_stage: monetize
+    trigger: User completes purchase successfully
+    requires: [payment]
+    archetypes: [web-app]
 
   # --- Auth Events ---
   signup_completed:
